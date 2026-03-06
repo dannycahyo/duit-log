@@ -102,7 +102,7 @@ export default function Index() {
               type="text"
               id="payee"
               name="payee"
-              placeholder="Who paid?"
+              placeholder="e.g. Indomaret, Warung Bu Wiwik"
               required
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-ring focus:outline-none focus:ring-2"
             />
