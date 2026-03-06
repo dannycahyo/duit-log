@@ -1,7 +1,10 @@
 import { data, useLoaderData } from 'react-router';
+import type { Route } from './+types/history';
 import { getRecentExpenses } from '~/lib/sheets.server';
+import { requireAuth } from '~/lib/auth.server';
 
-export async function loader() {
+export async function loader({ request }: Route.LoaderArgs) {
+  await requireAuth(request);
   try {
     const rows = await getRecentExpenses(20);
     return data({ entries: rows });

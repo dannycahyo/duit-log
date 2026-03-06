@@ -1,16 +1,19 @@
 import { useEffect } from 'react';
 import {
+  Form,
   isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from 'react-router';
 
 import type { Route } from './+types/root';
 import './app.css';
 import { Toaster } from '~/components/ui/sonner';
+import { isAuthenticated } from '~/lib/auth.server';
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -24,6 +27,10 @@ export const links: Route.LinksFunction = () => [
     href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap',
   },
 ];
+
+export async function loader({ request }: Route.LoaderArgs) {
+  return { isAuthenticated: await isAuthenticated(request) };
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -58,7 +65,37 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const { isAuthenticated } = useLoaderData<typeof loader>();
+
+  return (
+    <>
+      <Outlet />
+      {isAuthenticated && (
+        <nav className="fixed bottom-0 left-0 right-0 mx-auto flex max-w-md items-center justify-around border-t border-slate-200 bg-white py-2">
+          <a
+            href="/"
+            className="flex flex-col items-center gap-1 px-4 py-1 text-xs text-slate-600 hover:text-slate-900"
+          >
+            Add
+          </a>
+          <a
+            href="/history"
+            className="flex flex-col items-center gap-1 px-4 py-1 text-xs text-slate-600 hover:text-slate-900"
+          >
+            History
+          </a>
+          <Form method="post" action="/logout">
+            <button
+              type="submit"
+              className="flex flex-col items-center gap-1 px-4 py-1 text-xs text-slate-600 hover:text-slate-900"
+            >
+              Logout
+            </button>
+          </Form>
+        </nav>
+      )}
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

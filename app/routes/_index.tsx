@@ -6,6 +6,7 @@ import { expenseSchema } from '~/lib/validation';
 import { ExpenseForm } from '~/components/expense-form';
 import { log } from '~/lib/logger.server';
 import { toast } from 'sonner';
+import { requireAuth } from '~/lib/auth.server';
 
 type ActionData =
   | {
@@ -22,7 +23,13 @@ type ActionData =
   | { success: false; errors: Record<string, string> }
   | { success: false; error: string };
 
+export async function loader({ request }: Route.LoaderArgs) {
+  await requireAuth(request);
+  return null;
+}
+
 export async function action({ request }: Route.ActionArgs) {
+  await requireAuth(request);
   const formData = await request.formData();
   const raw = {
     item: formData.get('item') as string,
