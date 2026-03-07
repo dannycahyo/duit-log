@@ -1,5 +1,9 @@
 node_modules/
+dist/
 build/
 .react-router/
 .env
 .env.local
+.vercel/
+*.log
+.DS_Store
