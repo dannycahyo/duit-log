@@ -1,4 +1,4 @@
-import { data, useLoaderData } from 'react-router';
+import { data, useLoaderData, useRouteError, isRouteErrorResponse } from 'react-router';
 import type { Route } from './+types/history';
 import { getRecentExpenses } from '~/lib/sheets.server';
 import { requireAuth } from '~/lib/auth.server';
@@ -58,6 +58,29 @@ export default function History() {
           ))}
         </div>
       )}
+    </main>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const message =
+    isRouteErrorResponse(error)
+      ? error.statusText || 'Something went wrong'
+      : error instanceof Error
+        ? error.message
+        : 'Something went wrong';
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center bg-white px-6 text-center">
+      <h1 className="text-xl font-bold text-slate-900">Something went wrong</h1>
+      <p className="mt-2 text-sm text-slate-500">{message}</p>
+      <a
+        href="/"
+        className="mt-6 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white"
+      >
+        Go home
+      </a>
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import { useReducer } from 'react';
+import { useReducer, type RefObject } from 'react';
 import { Form } from 'react-router';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
@@ -14,6 +14,7 @@ import { cn } from '~/lib/utils';
 interface ExpenseFormProps {
   errors?: Record<string, string>;
   isSubmitting?: boolean;
+  amountRef?: RefObject<HTMLInputElement | null>;
 }
 
 function toDateString(d: Date) {
@@ -53,6 +54,7 @@ function reducer(state: State, action: Action): State {
 export function ExpenseForm({
   errors,
   isSubmitting,
+  amountRef,
 }: ExpenseFormProps) {
   const [state, dispatch] = useReducer(reducer, {
     date: new Date(),
@@ -77,6 +79,7 @@ export function ExpenseForm({
               value={state.amount.replace(/,/g, '')}
             />
             <input
+              ref={amountRef}
               type="text"
               inputMode="decimal"
               placeholder="0"
