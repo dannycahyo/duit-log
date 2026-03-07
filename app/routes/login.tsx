@@ -1,17 +1,22 @@
-import { Form, redirect, useActionData, useNavigation } from "react-router";
-import type { Route } from "./+types/login";
-import { isAuthenticated, login } from "~/lib/auth.server";
+import {
+  Form,
+  redirect,
+  useActionData,
+  useNavigation,
+} from 'react-router';
+import type { Route } from './+types/login';
+import { isAuthenticated, login } from '~/lib/auth.server';
 
 export async function loader({ request }: Route.LoaderArgs) {
   if (await isAuthenticated(request)) {
-    throw redirect("/");
+    throw redirect('/');
   }
   return null;
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
-  const passcode = formData.get("passcode") as string;
+  const passcode = formData.get('passcode') as string;
   return login(request, passcode);
 }
 
@@ -20,7 +25,7 @@ export default function Login() {
     | { error?: string }
     | undefined;
   const navigation = useNavigation();
-  const isSubmitting = navigation.state === "submitting";
+  const isSubmitting = navigation.state === 'submitting';
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-white px-4">
@@ -37,7 +42,6 @@ export default function Login() {
             id="passcode"
             name="passcode"
             placeholder="Enter passcode"
-            inputMode="numeric"
             autoFocus
             required
             className="w-full rounded-lg border border-slate-500 px-4 py-3 text-center text-lg tracking-widest text-slate-900 placeholder:text-slate-500 focus:border-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-700"
@@ -52,7 +56,7 @@ export default function Login() {
             disabled={isSubmitting}
             className="w-full rounded-lg bg-slate-900 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {isSubmitting ? "Checking..." : "Enter"}
+            {isSubmitting ? 'Checking...' : 'Enter'}
           </button>
         </Form>
       </div>
