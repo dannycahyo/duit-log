@@ -126,7 +126,7 @@ export default function Index() {
       : undefined;
 
   return (
-    <main className="mx-auto flex h-screen max-w-md flex-col bg-white">
+    <main className="mx-auto flex min-h-screen max-w-md flex-col bg-white">
       <header className="px-4 pt-6 pb-2 shrink-0">
         <h1 className="text-xl font-bold tracking-tight text-slate-900">
           DuitLog

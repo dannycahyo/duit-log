@@ -63,9 +63,8 @@ export function ExpenseForm({
   return (
     <Form
       method="post"
-      className="flex flex-col flex-1 overflow-hidden"
+      className="flex flex-col gap-4 p-4"
     >
-      <div className="flex-1 overflow-y-auto flex flex-col gap-4 p-4">
         {/* Amount */}
         <fieldset>
           <div className="flex items-center gap-2 rounded-xl border-2 border-slate-200 px-4 py-3 focus-within:border-slate-900">
@@ -234,14 +233,12 @@ export function ExpenseForm({
             </p>
           )}
         </fieldset>
-      </div>
 
-      {/* Sticky footer */}
-      <div className="border-t border-slate-100 bg-white p-4">
+        {/* Submit */}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-xl bg-slate-900 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+          className="w-full rounded-xl bg-slate-900 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-50 mt-4"
         >
           {isSubmitting ? (
             <span className="inline-flex items-center gap-2">
@@ -270,7 +267,6 @@ export function ExpenseForm({
             'Save Expense'
           )}
         </button>
-      </div>
     </Form>
   );
 }
