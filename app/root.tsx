@@ -145,10 +145,9 @@ export default function App() {
       </div>
       {isAuthenticated && (
         <nav
-          className="fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-w-md items-center justify-around border-t border-slate-200 bg-white"
+          className="fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-w-md items-center justify-around border-t border-slate-200 bg-white py-3"
           style={{
-            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-            height: '80px',
+            paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
           }}
         >
           <NavLink
