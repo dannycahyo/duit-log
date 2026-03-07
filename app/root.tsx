@@ -136,7 +136,7 @@ export default function App() {
           isAuthenticated
             ? {
                 paddingBottom:
-                  'max(6rem, calc(4rem + env(safe-area-inset-bottom)))',
+                  'calc(4rem + env(safe-area-inset-bottom, 0.5rem))',
               }
             : undefined
         }
@@ -147,7 +147,7 @@ export default function App() {
         <nav
           className="fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-w-md items-center justify-around border-t border-slate-200 bg-white py-3"
           style={{
-            paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
+            paddingBottom: 'env(safe-area-inset-bottom, 0.5rem)',
           }}
         >
           <NavLink
