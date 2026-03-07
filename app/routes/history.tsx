@@ -64,11 +64,15 @@ export default function History() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
+  const isDev =
+    typeof process !== 'undefined' &&
+    process.env &&
+    process.env.NODE_ENV === 'development';
   const message =
     isRouteErrorResponse(error)
       ? error.statusText || 'Something went wrong'
       : error instanceof Error
-        ? error.message
+        ? (isDev ? error.message : 'Something went wrong')
         : 'Something went wrong';
 
   return (

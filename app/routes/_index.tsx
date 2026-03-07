@@ -115,7 +115,9 @@ export default function Index() {
       toast.success(
         `Saved: ${actionData.entry.item} · ${actionData.entry.category} — IDR ${actionData.entry.amount.toLocaleString()}`,
       );
-      if ('vibrate' in navigator) navigator.vibrate(50);
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(50);
+      }
       setFormKey((k) => k + 1);
       // Focus will happen after re-mount via autoFocus on amount input
       setTimeout(() => amountRef.current?.focus(), 100);

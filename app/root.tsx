@@ -57,6 +57,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           }
         });
       });
+
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        setWaitingWorker(registration.waiting);
+        setSwUpdate(true);
+      }
     });
   }, []);
 
@@ -64,7 +69,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (waitingWorker) {
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
       setSwUpdate(false);
-      window.location.reload();
+
+      if ('serviceWorker' in navigator && navigator.serviceWorker) {
+        navigator.serviceWorker.addEventListener(
+          'controllerchange',
+          () => {
+            window.location.reload();
+          },
+          { once: true },
+        );
+      } else {
+        window.location.reload();
+      }
     }
   }, [waitingWorker]);
 
@@ -112,7 +128,6 @@ export default function App() {
   return (
     <>
       <div
-        className={isAuthenticated ? undefined : undefined}
         style={
           isAuthenticated
             ? {
