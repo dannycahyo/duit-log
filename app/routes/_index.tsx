@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { data, useActionData, useNavigation } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { data, useActionData, useNavigation, useRouteError, isRouteErrorResponse } from 'react-router';
 import type { Route } from './+types/_index';
 import { appendExpense } from '~/lib/sheets.server';
 import { expenseSchema } from '~/lib/validation';
@@ -104,6 +104,7 @@ export default function Index() {
     | undefined;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
+  const amountRef = useRef<HTMLInputElement>(null);
 
   const [formKey, setFormKey] = useState(0);
 
@@ -114,7 +115,12 @@ export default function Index() {
       toast.success(
         `Saved: ${actionData.entry.item} · ${actionData.entry.category} — IDR ${actionData.entry.amount.toLocaleString()}`,
       );
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(50);
+      }
       setFormKey((k) => k + 1);
+      // Focus will happen after re-mount via autoFocus on amount input
+      setTimeout(() => amountRef.current?.focus(), 100);
     } else if ('error' in actionData && actionData.error) {
       toast.error(actionData.error);
     }
@@ -136,7 +142,32 @@ export default function Index() {
         key={formKey}
         errors={errors}
         isSubmitting={isSubmitting}
+        amountRef={amountRef}
       />
+    </main>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const isDev = process.env.NODE_ENV === 'development';
+  const message =
+    isRouteErrorResponse(error)
+      ? error.statusText || 'Something went wrong'
+      : isDev && error instanceof Error
+        ? error.message
+        : 'Something went wrong';
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center bg-white px-6 text-center">
+      <h1 className="text-xl font-bold text-slate-900">Something went wrong</h1>
+      <p className="mt-2 text-sm text-slate-500">{message}</p>
+      <a
+        href="/"
+        className="mt-6 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white"
+      >
+        Go home
+      </a>
     </main>
   );
 }
