@@ -1,12 +1,19 @@
-import { getAllPending, removePendingExpense } from "./offline-queue";
+import { getAllPending, removePendingExpense } from './offline-queue';
 
-export type SyncProgressCallback = (synced: number, total: number, failed: number) => void;
+export type SyncProgressCallback = (
+  synced: number,
+  total: number,
+  failed: number,
+) => void;
 
-export async function syncPendingExpenses(onProgress?: SyncProgressCallback): Promise<{
-  synced: number;
-  failed: number;
-}> {
-  const pending = await getAllPending();
+async function _doSync(
+  onProgress?: SyncProgressCallback,
+): Promise<{ synced: number; failed: number }> {
+  const pending = (await getAllPending()).sort(
+    (a, b) =>
+      new Date(a.createdAt).getTime() -
+      new Date(b.createdAt).getTime(),
+  );
   if (pending.length === 0) return { synced: 0, failed: 0 };
 
   let synced = 0;
@@ -14,9 +21,9 @@ export async function syncPendingExpenses(onProgress?: SyncProgressCallback): Pr
 
   for (const entry of pending) {
     try {
-      const response = await fetch("/api/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...entry.formData,
           createdAt: entry.createdAt,
@@ -47,4 +54,27 @@ export async function syncPendingExpenses(onProgress?: SyncProgressCallback): Pr
   }
 
   return { synced, failed };
+}
+
+/**
+ * Public entry point. Acquires a Web Lock when available so the page and the
+ * SW Background Sync handler cannot run concurrently and double-submit the
+ * same queued entry.
+ */
+export async function syncPendingExpenses(
+  onProgress?: SyncProgressCallback,
+): Promise<{ synced: number; failed: number }> {
+  if (typeof navigator !== 'undefined' && 'locks' in navigator) {
+    return (
+      navigator as typeof navigator & {
+        locks: {
+          request: <T>(
+            name: string,
+            fn: () => Promise<T>,
+          ) => Promise<T>;
+        };
+      }
+    ).locks.request('duitlog-sync', () => _doSync(onProgress));
+  }
+  return _doSync(onProgress);
 }

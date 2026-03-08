@@ -1,4 +1,5 @@
-import { useReducer, type RefObject } from 'react';
+import React, { useReducer, type RefObject } from 'react';
+import { toast } from 'sonner';
 import { Form } from 'react-router';
 import { endOfMonth, format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
@@ -82,21 +83,28 @@ export function ExpenseForm({
     const formData = new FormData(form);
 
     // Basic client-side validation for offline entries
-    const amount = formData.get("amount") as string;
-    const category = formData.get("category") as string;
-    const method = formData.get("method") as string;
-    const source = formData.get("source") as string;
-    const item = formData.get("item") as string;
-    const date = formData.get("date") as string;
+    const amount = formData.get('amount') as string;
+    const category = formData.get('category') as string;
+    const method = formData.get('method') as string;
+    const source = formData.get('source') as string;
+    const item = formData.get('item') as string;
+    const date = formData.get('date') as string;
 
-    if (!amount || !category || !method || !source || !item || !date) {
-      alert("Please fill in all required fields.");
+    if (
+      !amount ||
+      !category ||
+      !method ||
+      !source ||
+      !item ||
+      !date
+    ) {
+      toast.error('Please fill in all required fields.');
       return;
     }
 
     const numAmount = Number(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      alert("Amount must be a positive number.");
+      toast.error('Amount must be a positive number.');
       return;
     }
 
@@ -104,7 +112,11 @@ export function ExpenseForm({
   }
 
   return (
-    <Form method="post" className="flex flex-col gap-4 p-4" onSubmit={handleSubmit}>
+    <Form
+      method="post"
+      className="flex flex-col gap-4 p-4"
+      onSubmit={handleSubmit}
+    >
       {selectedMonth && (
         <input type="hidden" name="month" value={selectedMonth} />
       )}

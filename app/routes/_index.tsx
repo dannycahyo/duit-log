@@ -171,7 +171,8 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Index() {
-  const { months, activeMonth, defaultSource } = useLoaderData<typeof loader>();
+  const { months, activeMonth, defaultSource } =
+    useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as
     | ActionData
     | undefined;
@@ -215,8 +216,12 @@ export default function Index() {
   }, [refreshPendingCount]);
 
   // Auto-sync when coming back online
+  // Skip when SyncManager is available — the SW Background Sync owns it then,
+  // preventing concurrent submissions of the same queued entry.
   useEffect(() => {
     if (!isOnline || pendingCount === 0 || isSyncing) return;
+    if (typeof window !== 'undefined' && 'SyncManager' in window)
+      return;
 
     setIsSyncing(true);
     syncPendingExpenses((synced, total) => {
@@ -253,7 +258,8 @@ export default function Index() {
     };
 
     navigator.serviceWorker.addEventListener('message', handler);
-    return () => navigator.serviceWorker.removeEventListener('message', handler);
+    return () =>
+      navigator.serviceWorker.removeEventListener('message', handler);
   }, [refreshPendingCount]);
 
   // Handle online success toast
@@ -347,7 +353,8 @@ export default function Index() {
       {/* Offline banner */}
       {!isOnline && (
         <div className="mx-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800">
-          You're offline — expenses will be saved locally and synced when you reconnect.
+          You're offline — expenses will be saved locally and synced
+          when you reconnect.
         </div>
       )}
 
@@ -357,7 +364,9 @@ export default function Index() {
           <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">
             {pendingCount}
           </span>
-          {isSyncing ? 'Syncing...' : `pending expense${pendingCount > 1 ? 's' : ''}`}
+          {isSyncing
+            ? 'Syncing...'
+            : `pending expense${pendingCount > 1 ? 's' : ''}`}
         </div>
       )}
 
