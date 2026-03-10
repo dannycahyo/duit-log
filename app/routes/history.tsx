@@ -39,7 +39,7 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: 'Invalid month format. Expected YYYY-MM.' }, { status: 400 });
   }
   await deleteExpenseByTimestamp(month, timestamp);
-  return { success: true };
+  return data({ success: true });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
