@@ -1,4 +1,4 @@
-import { getAuth } from '@clerk/react-router/ssr.server';
+import { getAuth } from '@clerk/react-router/server';
 import { redirect, Outlet, NavLink } from 'react-router';
 import { UserButton } from '@clerk/react-router';
 import type { Route } from './+types/_app';

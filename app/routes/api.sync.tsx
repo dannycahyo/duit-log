@@ -1,6 +1,6 @@
 import { data, redirect } from "react-router";
 import type { Route } from "./+types/api.sync";
-import { getAuth } from "@clerk/react-router/ssr.server";
+import { getAuth } from "@clerk/react-router/server";
 import { expenseSchema } from "~/lib/validation";
 import { appendExpense, getAvailableMonths } from "~/lib/sheets.server";
 import { log } from "~/lib/logger.server";

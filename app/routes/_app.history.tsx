@@ -8,7 +8,7 @@ import {
 } from 'react-router';
 import type { Route } from './+types/_app.history';
 import { getExpensesByMonth } from '~/lib/sheets.server';
-import { getAuth } from '@clerk/react-router/ssr.server';
+import { getAuth } from '@clerk/react-router/server';
 import { redirect } from 'react-router';
 import { resolveActiveMonth } from '~/lib/month.server';
 import { selectedMonthCookie } from '~/lib/cookies.server';

@@ -12,12 +12,12 @@ import {
 import type { Route } from './+types/root';
 import './app.css';
 import { Toaster } from '~/components/ui/sonner';
-import { rootAuthLoader } from '@clerk/react-router/ssr.server';
+import { clerkMiddleware, rootAuthLoader } from '@clerk/react-router/server';
 import { ClerkProvider } from '@clerk/react-router';
 
-export async function loader(args: Route.LoaderArgs) {
-  return rootAuthLoader(args);
-}
+export const middleware: Route.MiddlewareFunction[] = [clerkMiddleware()];
+
+export const loader = (args: Route.LoaderArgs) => rootAuthLoader(args);
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [swUpdate, setSwUpdate] = useState(false);

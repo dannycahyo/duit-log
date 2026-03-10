@@ -17,7 +17,7 @@ import { ExpenseForm } from '~/components/expense-form';
 import { MonthSelector } from '~/components/month-selector';
 import { log } from '~/lib/logger.server';
 import { toast } from 'sonner';
-import { getAuth } from '@clerk/react-router/ssr.server';
+import { getAuth } from '@clerk/react-router/server';
 import { redirect } from 'react-router';
 import { resolveActiveMonth, isNetworkError } from '~/lib/month.server';
 import {
