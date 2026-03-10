@@ -99,9 +99,25 @@ export async function deleteExpenseByTimestamp(
       range: `'${month}'!A:G`
     });
     const values = res.data.values ?? [];
-    const rowIndex = values.findIndex((row) => row[0] === timestamp);
-    if (rowIndex === -1) throw new Error('Expense not found');
 
+    // Find all rows that match the given timestamp in the first column.
+    const matchingRowIndices: number[] = [];
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      if (row && row[0] === timestamp) {
+        matchingRowIndices.push(i);
+      }
+    }
+
+    if (matchingRowIndices.length === 0) {
+      throw new Error('Expense not found');
+    }
+
+    if (matchingRowIndices.length > 1) {
+      throw new Error('Multiple expenses share the same timestamp; deletion is ambiguous');
+    }
+
+    const rowIndex = matchingRowIndices[0];
     const sheetId = await getSheetIdByName(month);
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
