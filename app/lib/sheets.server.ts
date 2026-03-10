@@ -135,5 +135,8 @@ async function getSheetIdByName(name: string): Promise<number> {
   const sheet = (res.data.sheets ?? []).find(
     (s) => s.properties?.title === name
   );
-  return sheet?.properties?.sheetId ?? 0;
+  if (!sheet || sheet.properties?.sheetId == null) {
+    throw new Error(`Sheet not found or missing sheetId for name: ${name}`);
+  }
+  return sheet.properties.sheetId;
 }
