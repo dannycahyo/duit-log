@@ -287,6 +287,7 @@ export default function History() {
               key={`${entry.timestamp}-${i}`}
               entry={entry}
               activeMonth={activeMonth}
+              canDelete={!isOffline}
             />
           ))}
         </div>
