@@ -22,7 +22,7 @@ To serve multiple users, DuitLog needs real authentication, per-user configurati
 ## Non-Goals (SaaS v1)
 
 - Billing / paid tiers (free for now, evaluate later).
-- Shared household accounts (each user has their own sheet; couples can share a Google Sheet manually outside the app).
+- Shared household accounts or multi-user → one-spreadsheet setups (each account connects to and manages its own sheet; any Google Sheets sharing/collaboration happens outside the app and is not recognized as a shared account in v1).
 - Admin dashboard or usage analytics.
 - White-labeling or custom domains.
 - Data export beyond Google Sheets (the sheet IS the export).
@@ -40,7 +40,7 @@ To serve multiple users, DuitLog needs real authentication, per-user configurati
 ### J1: Sign Up & Onboarding (First-time)
 
 1. Land on DuitLog homepage → "Sign in with Google".
-2. Clerk handles Google OAuth, including requesting Sheets API permissions.
+2. Clerk handles Google OAuth, requesting Google Sheets API permissions plus the minimal Google Drive scopes needed to create spreadsheets and let the user pick an existing spreadsheet from Drive (via the Google Picker or equivalent).
 3. On first login, redirected to onboarding wizard:
    - **Step 1 — Spreadsheet**: Choose "Create a new spreadsheet" (auto-setup) or "Connect an existing spreadsheet" (paste URL or pick from Drive).
    - **Step 2 — Sources**: Define money sources (e.g., "Me", "Wife", "Joint"). Starts with sensible defaults, user can add/remove/rename.
