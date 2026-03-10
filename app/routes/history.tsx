@@ -22,8 +22,22 @@ import { deleteExpenseByTimestamp } from '~/lib/sheets.server';
 export async function action({ request }: Route.ActionArgs) {
   await requireAuth(request);
   const formData = await request.formData();
-  const timestamp = formData.get('timestamp') as string;
-  const month = formData.get('month') as string;
+  const timestamp = formData.get('timestamp');
+  const month = formData.get('month');
+
+  // Validate timestamp presence and type
+  if (typeof timestamp !== 'string' || !timestamp.trim()) {
+    return data({ error: 'Invalid or missing timestamp' }, { status: 400 });
+  }
+
+  // Validate month presence, type, and format YYYY-MM
+  if (typeof month !== 'string' || !month.trim()) {
+    return data({ error: 'Invalid or missing month' }, { status: 400 });
+  }
+  const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
+  if (!monthPattern.test(month)) {
+    return data({ error: 'Invalid month format. Expected YYYY-MM.' }, { status: 400 });
+  }
   await deleteExpenseByTimestamp(month, timestamp);
   return { success: true };
 }
