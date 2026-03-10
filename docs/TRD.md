@@ -2,7 +2,7 @@
 
 | Version | Date       | Author | Change Description |
 | ------- | ---------- | ------ | ------------------ |
-| 2       | 2025-03-09 | Danny  | Saas Plan          |
+| 2       | 2025-03-09 | Danny  | SaaS Plan          |
 
 ## High-Level Architecture
 
@@ -73,7 +73,7 @@
 ### Removing old auth
 
 - Remove `auth.server.ts` (passcode-based session auth).
-- Remove `login.tsx` and `logout.tsx` routes.
+- Remove `login.tsx` routes.
 - Remove `AUTH_PASSCODE` and `SESSION_SECRET` env vars.
 - Remove `duitlog_session` cookie.
 - Replace all `requireAuth(request)` calls with Clerk's auth middleware/helpers.
@@ -107,10 +107,13 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// 1:1 relationship — each user has exactly one spreadsheet.
+// The unique constraint on user_id enforces this at the DB level.
 export const userSpreadsheets = pgTable('user_spreadsheets', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
     .notNull()
+    .unique() // One spreadsheet per user
     .references(() => users.id, { onDelete: 'cascade' }),
   spreadsheetId: text('spreadsheet_id').notNull(),
   spreadsheetUrl: text('spreadsheet_url'),
@@ -356,6 +359,7 @@ export async function createSpreadsheetForUser(
           'Amount',
           'Method',
           'Date',
+          'Source',
         ],
       ],
     },
@@ -511,14 +515,31 @@ The loader queries the database for the user's config and passes it to the compo
 
 ## Offline Queue: Updated for Multi-User
 
-The offline queue (`offline-queue.ts`) remains client-side and works the same way. The `/api/sync` endpoint is updated to:
+The offline queue uses IndexedDB but must be **scoped per user** to prevent cross-account data leakage. When a different user signs in on the same device, queued expenses from the previous user must never sync to the new user's spreadsheet.
+
+### Client-side changes
+
+1. **Store the authenticated `clerkUserId` with each queued expense.** The `PendingExpense` record gains a `userId` field set at enqueue time.
+2. **On auth change (sign-out / sign-in), clear or segregate the queue.** Use Clerk's `useAuth()` hook to detect user changes and either:
+   - Clear all pending expenses on sign-out (`clearAllPending()`), or
+   - Filter pending expenses by `userId` so only the current user's entries are synced.
+3. **IndexedDB database name can be kept global** (`duitlog-offline`), but the sync engine must filter by `userId` before posting.
+
+### Server-side validation
+
+The `/api/sync` endpoint **must validate that the `userId` in the queued expense matches the authenticated Clerk user**. This is the authoritative check — even if the client is tampered with, the server rejects mismatched entries.
+
+### Updated `/api/sync` endpoint
 
 1. Authenticate via Clerk (the session cookie is sent with the fetch).
-2. Look up the user's spreadsheet ID from the database.
-3. Look up the user's sources/categories/methods for validation.
-4. Use the user's OAuth token for the Sheets API call.
+2. **Validate that the expense's `userId` matches the authenticated user** (reject if mismatched).
+3. Look up the user's spreadsheet ID from the database.
+4. Look up the user's sources/categories/methods for validation.
+5. Use the user's OAuth token for the Sheets API call.
 
 ## Environment Variables (Updated)
+
+> **Note:** The repo's current `.env.example` still documents the old service-account and passcode vars (`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_SPREADSHEET_ID`, `AUTH_PASSCODE`, `SESSION_SECRET`). As part of the implementation PR, `.env.example` and `README.md` must be updated to reflect the new variables below.
 
 ```env
 # Clerk
@@ -561,5 +582,5 @@ DATABASE_URL=postgresql://...
 ## Performance Considerations
 
 - **DB queries per request**: Each loader/action needs the user's config (1 DB query) and the Sheets API call. The DB query adds ~10–30ms on Vercel's network. Acceptable.
-- **OAuth token retrieval**: Clerk's `getUserOauthAccessToken` is a network call to Clerk's API (~50–100ms). Consider caching the token in the route loader and passing it through, rather than calling Clerk twice (once in loader, once in action).
+- **OAuth token retrieval**: Clerk's `getUserOauthAccessToken` is a network call to Clerk's API (~50–100ms). To reduce duplicate Clerk calls within a single request, use a **server-side helper** that fetches the token once per request and reuses it across loader/action logic. **Do not pass the OAuth access token to the client via loader data** — loader data is serialized to the browser and would leak the bearer token. Keep all token handling server-side only.
 - **Config caching**: For heavy users, we could cache their config in a cookie or short-lived in-memory cache. Not needed for v1 — the DB query is fast enough.
