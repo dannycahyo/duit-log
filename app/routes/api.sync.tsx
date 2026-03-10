@@ -1,14 +1,15 @@
-import { data } from "react-router";
+import { data, redirect } from "react-router";
 import type { Route } from "./+types/api.sync";
-import { requireAuth } from "~/lib/auth.server";
+import { getAuth } from "@clerk/react-router/ssr.server";
 import { expenseSchema } from "~/lib/validation";
 import { appendExpense, getAvailableMonths } from "~/lib/sheets.server";
 import { log } from "~/lib/logger.server";
 
-export async function action({ request }: Route.ActionArgs) {
-  await requireAuth(request);
+export async function action(args: Route.ActionArgs) {
+  const { userId } = await getAuth(args);
+  if (!userId) throw redirect("/");
 
-  const body = await request.json();
+  const body = await args.request.json();
   const result = expenseSchema.safeParse(body);
 
   if (!result.success) {
