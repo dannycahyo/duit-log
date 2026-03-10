@@ -17,6 +17,16 @@ import { MonthSelector } from '~/components/month-selector';
 import { getPendingCount } from '~/lib/offline-queue';
 import { syncPendingExpenses } from '~/lib/sync';
 import { toast } from 'sonner';
+import { deleteExpenseByTimestamp } from '~/lib/sheets.server';
+
+export async function action({ request }: Route.ActionArgs) {
+  await requireAuth(request);
+  const formData = await request.formData();
+  const timestamp = formData.get('timestamp') as string;
+  const month = formData.get('month') as string;
+  await deleteExpenseByTimestamp(month, timestamp);
+  return { success: true };
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
   await requireAuth(request);
@@ -262,6 +272,7 @@ export default function History() {
             <ExpenseCard
               key={`${entry.timestamp}-${i}`}
               entry={entry}
+              activeMonth={activeMonth}
             />
           ))}
         </div>
