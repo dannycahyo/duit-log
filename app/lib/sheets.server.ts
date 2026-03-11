@@ -101,10 +101,10 @@ export async function createSpreadsheetForUser(
   // Add header row
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `${currentMonth}!A1:F1`,
+    range: `${currentMonth}!A1:G1`,
     valueInputOption: 'RAW',
     requestBody: {
-      values: [['Timestamp', 'Source', 'Category', 'Amount', 'Method', 'Date']],
+      values: [['Timestamp', 'Item', 'Category', 'Amount', 'Payment Method', 'Date', 'Source']],
     },
   });
 
@@ -118,7 +118,23 @@ export async function verifySpreadsheetAccess(
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
   const sheets = google.sheets({ version: 'v4', auth });
+  // First, verify that the spreadsheet exists and is readable.
   await sheets.spreadsheets.get({ spreadsheetId });
+
+  // Then, verify that the user has edit permissions on the underlying Drive file.
+  const drive = google.drive({ version: 'v3', auth });
+  const file = await drive.files.get({
+    fileId: spreadsheetId,
+    fields: 'id, capabilities(canEdit)'
+  });
+
+  const canEdit = file.data.capabilities?.canEdit;
+  if (!canEdit) {
+    throw new Error(
+      'The connected Google account does not have edit access to this spreadsheet. ' +
+      'Please ensure you have editor permissions and try again.'
+    );
+  }
 }
 
 export async function getExpensesByMonth(
