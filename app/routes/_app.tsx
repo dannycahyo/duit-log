@@ -1,14 +1,37 @@
 import { getAuth } from '@clerk/react-router/server';
+import { createClerkClient } from '@clerk/react-router/api.server';
 import { redirect, Outlet, NavLink } from 'react-router';
+import { getOrCreateUser } from '~/lib/user.server';
 
 import type { Route } from './+types/_app';
 
 export async function loader(args: Route.LoaderArgs) {
-  const { userId } = await getAuth(args);
-  if (!userId) {
+  const { userId: clerkUserId } = await getAuth(args);
+  if (!clerkUserId) {
     throw redirect('/');
   }
-  return { userId };
+
+  // Get Clerk user details
+  const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+  const clerkUser = await clerk.users.getUser(clerkUserId);
+
+  // Sync to our database
+  const user = await getOrCreateUser(
+    clerkUserId,
+    clerkUser.emailAddresses[0]?.emailAddress ?? '',
+    `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() || undefined,
+    clerkUser.imageUrl ?? undefined
+  );
+
+  // Redirect to onboarding if not complete
+  if (!user.onboardingComplete) {
+    const url = new URL(args.request.url);
+    if (!url.pathname.startsWith('/onboarding')) {
+      throw redirect('/onboarding');
+    }
+  }
+
+  return { user };
 }
 
 export default function AppLayout() {
