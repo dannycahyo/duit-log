@@ -344,12 +344,12 @@ export default function Onboarding({ loaderData }: Route.ComponentProps) {
   const isLastStep = state.step === STEPS.length - 1;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col bg-white px-6 py-8">
+    <main className="mx-auto flex min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0.5rem))] max-w-md flex-col bg-white px-6 py-8">
       {/* Progress indicator */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           {STEPS.map((label, i) => (
-            <div key={label} className="flex flex-1 items-center">
+            <div key={label} className={cn("flex items-center", i < STEPS.length - 1 && "flex-1")}>
               <div className="flex flex-col items-center">
                 <div
                   className={cn(
