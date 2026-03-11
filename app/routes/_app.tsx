@@ -1,6 +1,6 @@
 import { getAuth } from '@clerk/react-router/server';
-import { createClerkClient } from '@clerk/react-router/api.server';
 import { redirect, Outlet, NavLink } from 'react-router';
+import { clerkClient } from '~/lib/clerk.server';
 import { getOrCreateUser } from '~/lib/user.server';
 
 import type { Route } from './+types/_app';
@@ -12,31 +12,26 @@ export async function loader(args: Route.LoaderArgs) {
   }
 
   // Get Clerk user details
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error('CLERK_SECRET_KEY environment variable is not set or is empty.');
-  }
-  const clerk = createClerkClient({ secretKey });
-  const clerkUser = await clerk.users.getUser(clerkUserId);
+  const clerkUser = await clerkClient.users.getUser(clerkUserId);
 
   // Derive a primary email; fail fast if none is available
   const primaryEmail =
     clerkUser.emailAddresses.find(
       (email) =>
         email.id === clerkUser.primaryEmailAddressId &&
-        email.verification?.status === 'verified'
+        email.verification?.status === 'verified',
     ) ??
     clerkUser.emailAddresses.find(
-      (email) => email.id === clerkUser.primaryEmailAddressId
+      (email) => email.id === clerkUser.primaryEmailAddressId,
     ) ??
     clerkUser.emailAddresses.find(
-      (email) => email.verification?.status === 'verified'
+      (email) => email.verification?.status === 'verified',
     ) ??
     clerkUser.emailAddresses[0];
 
   if (!primaryEmail || !primaryEmail.emailAddress) {
     throw new Error(
-      'Authenticated Clerk user has no email address; cannot sync to local user record.'
+      'Authenticated Clerk user has no email address; cannot sync to local user record.',
     );
   }
 
@@ -44,12 +39,13 @@ export async function loader(args: Route.LoaderArgs) {
   const user = await getOrCreateUser(
     clerkUserId,
     primaryEmail.emailAddress,
-    `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() || undefined,
-    clerkUser.imageUrl ?? undefined
+    `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() ||
+      undefined,
+    clerkUser.imageUrl ?? undefined,
   );
 
   // Redirect to onboarding if not complete
-  if (!user.onboardingComplete) {
+  if (!user?.onboardingComplete) {
     const url = new URL(args.request.url);
     if (!url.pathname.startsWith('/onboarding')) {
       throw redirect('/onboarding');
