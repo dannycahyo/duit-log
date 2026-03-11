@@ -95,8 +95,19 @@ export async function createSpreadsheetForUser(
   auth.setCredentials({ access_token: accessToken });
   const sheets = google.sheets({ version: 'v4', auth });
 
+  // Derive current month using Asia/Jakarta timezone to match expense normalization
   const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const jakartaParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit'
+  }).formatToParts(now);
+  const jakartaYear = jakartaParts.find((p) => p.type === 'year')?.value;
+  const jakartaMonth = jakartaParts.find((p) => p.type === 'month')?.value;
+  if (!jakartaYear || !jakartaMonth) {
+    throw new Error('Failed to derive current month for Asia/Jakarta timezone');
+  }
+  const currentMonth = `${jakartaYear}-${jakartaMonth}`;
 
   const res = await sheets.spreadsheets.create({
     requestBody: {
