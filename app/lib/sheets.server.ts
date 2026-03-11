@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { clerkClient } from '~/lib/clerk.server';
 import { log } from './logger.server';
 
 // Singleton — reuse across requests in the same server instance
@@ -65,6 +66,59 @@ export async function appendExpense(
     log('error', 'sheets_append_error', { error: error.message });
     throw err;
   }
+}
+
+export async function getGoogleAccessToken(clerkUserId: string): Promise<string> {
+  const tokens = await clerkClient.users.getUserOauthAccessToken(clerkUserId, 'google');
+  const accessToken = tokens.data[0]?.token;
+  if (!accessToken) {
+    throw new Error('Google OAuth token not found. Please sign in again.');
+  }
+  return accessToken;
+}
+
+export async function createSpreadsheetForUser(
+  accessToken: string,
+  title: string = 'DuitLog Expenses',
+): Promise<{ spreadsheetId: string; spreadsheetUrl: string }> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const res = await sheets.spreadsheets.create({
+    requestBody: {
+      properties: { title },
+      sheets: [{ properties: { title: currentMonth } }],
+    },
+  });
+
+  const spreadsheetId = res.data.spreadsheetId!;
+  const spreadsheetUrl = res.data.spreadsheetUrl!;
+
+  // Add header row
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${currentMonth}!A1:F1`,
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [['Timestamp', 'Source', 'Category', 'Amount', 'Method', 'Date']],
+    },
+  });
+
+  return { spreadsheetId, spreadsheetUrl };
+}
+
+export async function verifySpreadsheetAccess(
+  accessToken: string,
+  spreadsheetId: string,
+): Promise<void> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+  const sheets = google.sheets({ version: 'v4', auth });
+  await sheets.spreadsheets.get({ spreadsheetId });
 }
 
 export async function getExpensesByMonth(
