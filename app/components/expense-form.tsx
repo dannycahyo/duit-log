@@ -118,6 +118,7 @@ export function ExpenseForm({
     const category = formData.get('category') as string;
     const method = formData.get('method') as string;
     const source = formData.get('source') as string;
+    const item = formData.get('item') as string;
     const date = formData.get('date') as string;
 
     if (
@@ -125,6 +126,7 @@ export function ExpenseForm({
       !category ||
       !method ||
       !source ||
+      !item ||
       !date
     ) {
       toast.error('Please fill in all required fields.');
@@ -178,6 +180,23 @@ export function ExpenseForm({
         </div>
         {errors?.amount && (
           <p className="mt-1 text-xs text-red-500">{errors.amount}</p>
+        )}
+      </fieldset>
+
+      {/* Item */}
+      <fieldset>
+        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          Item
+        </label>
+        <input
+          type="text"
+          name="item"
+          placeholder="What did you buy?"
+          maxLength={100}
+          className="w-full rounded-lg border-2 border-slate-200 px-4 py-3 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-slate-900"
+        />
+        {errors?.item && (
+          <p className="mt-1 text-xs text-red-500">{errors.item}</p>
         )}
       </fieldset>
 

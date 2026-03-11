@@ -45,6 +45,7 @@ type ActionData =
   | {
       success: true;
       entry: {
+        item: string;
         category: string;
         amount: number;
         method: string;
@@ -60,6 +61,7 @@ type ActionData =
       networkError: true;
       pendingData: {
         month: string;
+        item: string;
         date: string;
         amount: number;
         category: string;
@@ -151,13 +153,23 @@ export async function action(args: Route.ActionArgs) {
     if (!isNetworkError(err)) throw err;
   }
 
+  const now = new Date();
+  const jakartaDate = new Date(
+    now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }),
+  );
+  const timestamp = `${jakartaDate.getMonth() + 1}/${jakartaDate.getDate()}/${jakartaDate.getFullYear()} ${String(jakartaDate.getHours()).padStart(2, '0')}:${String(jakartaDate.getMinutes()).padStart(2, '0')}:${String(jakartaDate.getSeconds()).padStart(2, '0')}`;
+
+  const [year, month, day] = parsed.date.split('-');
+  const formattedDate = `${Number(month)}/${Number(day)}/${year}`;
+
   const row = [
-    new Date().toISOString(),
-    parsed.source,
-    parsed.category,
-    String(parsed.amount),
-    parsed.method,
-    parsed.date,
+    timestamp,        // Timestamp
+    parsed.item,      // Item
+    parsed.category,  // Category
+    String(parsed.amount), // Amount (IDR)
+    parsed.method,    // Payment Method
+    formattedDate,    // Date
+    parsed.source,    // Source
   ];
 
   try {
@@ -187,6 +199,7 @@ export async function action(args: Route.ActionArgs) {
         networkError: true as const,
         pendingData: {
           month: parsed.month,
+          item: parsed.item,
           date: parsed.date,
           amount: parsed.amount,
           category: parsed.category,
@@ -307,7 +320,7 @@ export default function Dashboard() {
     if (actionData.success) {
       const monthLabel = formatMonthLabel(actionData.entry.month);
       toast.success(
-        `Saved to ${monthLabel}: ${actionData.entry.category} — IDR ${actionData.entry.amount.toLocaleString()}`,
+        `Saved to ${monthLabel}: ${actionData.entry.item} — IDR ${actionData.entry.amount.toLocaleString()}`,
       );
       if (
         typeof navigator !== 'undefined' &&
@@ -353,6 +366,7 @@ export default function Dashboard() {
       createdAt: new Date().toISOString(),
       formData: {
         month: formData.get('month') as string,
+        item: formData.get('item') as string,
         date: formData.get('date') as string,
         amount: formData.get('amount') as string,
         category: formData.get('category') as string,

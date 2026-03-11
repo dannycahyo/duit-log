@@ -64,14 +64,15 @@ export async function loader(args: Route.LoaderArgs) {
       activeMonth,
       LIMIT,
     );
-    // Column order: Timestamp, Source, Category, Amount, Method, Date
+    // Column order: Timestamp, Item, Category, Amount, Payment Method, Date, Source
     const entries: ExpenseEntry[] = rows.map((row) => ({
       timestamp: row[0] ?? '',
-      source: row[1] ?? '',
+      item: row[1] ?? '',
       category: row[2] ?? '',
       amount: Number(row[3]) || 0,
       method: row[4] ?? '',
       date: row[5] ?? '',
+      source: row[6] ?? '',
     }));
     return data({
       entries,

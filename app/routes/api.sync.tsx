@@ -36,13 +36,24 @@ export async function action(args: Route.ActionArgs) {
   const parsed = result.data;
   const accessToken = await getGoogleAccessToken(clerkUserId);
 
+  // Use original submission time (createdAt) if available, otherwise use current time
+  const createdAt = body.createdAt ? new Date(body.createdAt) : new Date();
+  const jakartaDate = new Date(
+    createdAt.toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+  );
+  const timestamp = `${jakartaDate.getMonth() + 1}/${jakartaDate.getDate()}/${jakartaDate.getFullYear()} ${String(jakartaDate.getHours()).padStart(2, "0")}:${String(jakartaDate.getMinutes()).padStart(2, "0")}:${String(jakartaDate.getSeconds()).padStart(2, "0")}`;
+
+  const [year, month, day] = parsed.date.split("-");
+  const formattedDate = `${Number(month)}/${Number(day)}/${year}`;
+
   const row = [
-    body.createdAt ?? new Date().toISOString(),
-    parsed.source,
+    timestamp,
+    parsed.item,
     parsed.category,
     String(parsed.amount),
     parsed.method,
-    parsed.date,
+    formattedDate,
+    parsed.source,
   ];
 
   try {

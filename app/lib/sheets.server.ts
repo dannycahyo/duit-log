@@ -49,7 +49,7 @@ export async function appendExpense(
   const sheets = createSheetsClient(accessToken);
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: `'${month}'!A:F`,
+    range: `'${month}'!A:G`,
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] },
@@ -92,17 +92,18 @@ export async function createSpreadsheetForUser(
   // Add header row
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${currentMonth}'!A1:F1`,
+    range: `'${currentMonth}'!A1:G1`,
     valueInputOption: 'RAW',
     requestBody: {
       values: [
         [
           'Timestamp',
-          'Source',
+          'Item',
           'Category',
           'Amount',
-          'Method',
+          'Payment Method',
           'Date',
+          'Source',
         ],
       ],
     },
@@ -146,7 +147,7 @@ export async function getExpensesByMonth(
   const sheets = createSheetsClient(accessToken);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${month}'!A:F`,
+    range: `'${month}'!A:G`,
   });
   const rows = res.data.values ?? [];
   const data = rows.slice(1);

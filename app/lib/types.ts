@@ -1,8 +1,9 @@
 export interface ExpenseEntry {
   timestamp: string;
-  source: string;
+  item: string;
   category: string;
   amount: number;
   method: string;
   date: string;
+  source: string;
 }
