@@ -17,7 +17,7 @@ export const users = pgTable('users', {
     .notNull()
     .default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
 // 1:1 relationship — each user has exactly one spreadsheet.

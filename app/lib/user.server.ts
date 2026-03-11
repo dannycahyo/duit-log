@@ -32,9 +32,15 @@ export async function getOrCreateUser(
       name: name ?? null,
       avatarUrl: avatarUrl ?? null,
     })
+    .onConflictDoNothing({ target: users.clerkId })
     .returning();
 
-  return newUser;
+  if (newUser) return newUser;
+
+  // If another concurrent request inserted the user first, fetch it now.
+  return await db.query.users.findFirst({
+    where: eq(users.clerkId, clerkId),
+  });
 }
 
 /**

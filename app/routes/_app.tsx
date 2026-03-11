@@ -12,13 +12,38 @@ export async function loader(args: Route.LoaderArgs) {
   }
 
   // Get Clerk user details
-  const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error('CLERK_SECRET_KEY environment variable is not set or is empty.');
+  }
+  const clerk = createClerkClient({ secretKey });
   const clerkUser = await clerk.users.getUser(clerkUserId);
+
+  // Derive a primary email; fail fast if none is available
+  const primaryEmail =
+    clerkUser.emailAddresses.find(
+      (email) =>
+        email.id === clerkUser.primaryEmailAddressId &&
+        email.verification?.status === 'verified'
+    ) ??
+    clerkUser.emailAddresses.find(
+      (email) => email.id === clerkUser.primaryEmailAddressId
+    ) ??
+    clerkUser.emailAddresses.find(
+      (email) => email.verification?.status === 'verified'
+    ) ??
+    clerkUser.emailAddresses[0];
+
+  if (!primaryEmail || !primaryEmail.emailAddress) {
+    throw new Error(
+      'Authenticated Clerk user has no email address; cannot sync to local user record.'
+    );
+  }
 
   // Sync to our database
   const user = await getOrCreateUser(
     clerkUserId,
-    clerkUser.emailAddresses[0]?.emailAddress ?? '',
+    primaryEmail.emailAddress,
     `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() || undefined,
     clerkUser.imageUrl ?? undefined
   );
