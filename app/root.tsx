@@ -3,18 +3,20 @@ import {
   isRouteErrorResponse,
   Links,
   Meta,
-  NavLink,
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLoaderData,
   useRouteError,
 } from 'react-router';
 
 import type { Route } from './+types/root';
 import './app.css';
 import { Toaster } from '~/components/ui/sonner';
-import { isAuthenticated } from '~/lib/auth.server';
+import {
+  clerkMiddleware,
+  rootAuthLoader,
+} from '@clerk/react-router/server';
+import { ClerkProvider } from '@clerk/react-router';
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -29,9 +31,12 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-export async function loader({ request }: Route.LoaderArgs) {
-  return { isAuthenticated: await isAuthenticated(request) };
-}
+export const middleware: Route.MiddlewareFunction[] = [
+  clerkMiddleware(),
+];
+
+export const loader = (args: Route.LoaderArgs) =>
+  rootAuthLoader(args);
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [swUpdate, setSwUpdate] = useState(false);
@@ -126,85 +131,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
-  const { isAuthenticated } = useLoaderData<typeof loader>();
-
+export default function App({ loaderData }: Route.ComponentProps) {
   return (
-    <>
-      <div
-        style={
-          isAuthenticated
-            ? {
-                paddingBottom:
-                  'calc(4rem + env(safe-area-inset-bottom, 0.5rem))',
-              }
-            : undefined
-        }
-      >
-        <Outlet />
-      </div>
-      {isAuthenticated && (
-        <nav
-          className="fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-w-md items-center justify-around border-t border-slate-200 bg-white py-3"
-          style={{
-            paddingBottom: 'env(safe-area-inset-bottom, 0.5rem)',
-          }}
-        >
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-4 py-2 text-xs ${isActive ? 'font-bold text-slate-900' : 'text-slate-400'}`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={isActive ? 2.5 : 2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="16" />
-                  <line x1="8" y1="12" x2="16" y2="12" />
-                </svg>
-                <span>Add</span>
-              </>
-            )}
-          </NavLink>
-          <NavLink
-            to="/history"
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-4 py-2 text-xs ${isActive ? 'font-bold text-slate-900' : 'text-slate-400'}`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={isActive ? 2.5 : 2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                <span>History</span>
-              </>
-            )}
-          </NavLink>
-        </nav>
-      )}
-    </>
+    <ClerkProvider loaderData={loaderData}>
+      <Outlet />
+    </ClerkProvider>
   );
 }
 

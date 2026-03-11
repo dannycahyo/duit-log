@@ -6,9 +6,10 @@ import {
   useRouteError,
   isRouteErrorResponse,
 } from 'react-router';
-import type { Route } from './+types/history';
+import type { Route } from './+types/_app.history';
 import { getExpensesByMonth } from '~/lib/sheets.server';
-import { requireAuth } from '~/lib/auth.server';
+import { getAuth } from '@clerk/react-router/server';
+import { redirect } from 'react-router';
 import { resolveActiveMonth } from '~/lib/month.server';
 import { selectedMonthCookie } from '~/lib/cookies.server';
 import type { ExpenseEntry } from '~/lib/types';
@@ -18,13 +19,14 @@ import { getPendingCount } from '~/lib/offline-queue';
 import { syncPendingExpenses } from '~/lib/sync';
 import { toast } from 'sonner';
 
-export async function loader({ request }: Route.LoaderArgs) {
-  await requireAuth(request);
+export async function loader(args: Route.LoaderArgs) {
+  const { userId } = await getAuth(args);
+  if (!userId) throw redirect('/');
 
-  const url = new URL(request.url);
+  const url = new URL(args.request.url);
   const monthParam = url.searchParams.get('month');
   const cookieMonth = await selectedMonthCookie.parse(
-    request.headers.get('Cookie'),
+    args.request.headers.get('Cookie'),
   );
 
   const { months, activeMonth, offline } = await resolveActiveMonth(
@@ -246,7 +248,7 @@ export default function History() {
 
       {filtered.length === 0 && !error ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
-          <span className="text-5xl">🧾</span>
+          <span className="text-5xl">&#x1F9FE;</span>
           <p className="text-lg font-semibold text-slate-700">
             {isOffline ? 'No cached history for this month' : 'No expenses yet'}
           </p>
@@ -291,7 +293,7 @@ export function ErrorBoundary() {
       </h1>
       <p className="mt-2 text-sm text-slate-500">{message}</p>
       <a
-        href="/"
+        href="/dashboard"
         className="mt-6 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white"
       >
         Go home
