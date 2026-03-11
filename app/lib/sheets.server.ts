@@ -12,9 +12,12 @@ function getSheetsClient() {
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       // The private key is stored with literal \n in the env var; replace with real newlines
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(
+        /\\n/g,
+        '\n',
+      ),
     },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets']
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 
   _sheets = google.sheets({ version: 'v4', auth });
@@ -26,7 +29,7 @@ export async function getAvailableMonths(): Promise<string[]> {
     const sheets = getSheetsClient();
     const res = await sheets.spreadsheets.get({
       spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
-      fields: 'sheets.properties.title'
+      fields: 'sheets.properties.title',
     });
 
     const titles = (res.data.sheets ?? [])
@@ -37,7 +40,7 @@ export async function getAvailableMonths(): Promise<string[]> {
     titles.reverse();
 
     log('info', 'sheets_get_months_success', {
-      count: titles.length
+      count: titles.length,
     });
     return titles;
   } catch (err) {
@@ -49,7 +52,7 @@ export async function getAvailableMonths(): Promise<string[]> {
 
 export async function appendExpense(
   month: string,
-  row: string[]
+  row: string[],
 ): Promise<void> {
   try {
     const sheets = getSheetsClient();
@@ -58,7 +61,7 @@ export async function appendExpense(
       range: `'${month}'!A:G`,
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
-      requestBody: { values: [row] }
+      requestBody: { values: [row] },
     });
     log('info', 'sheets_append_success', { month });
   } catch (err) {
@@ -68,11 +71,18 @@ export async function appendExpense(
   }
 }
 
-export async function getGoogleAccessToken(clerkUserId: string): Promise<string> {
-  const tokens = await clerkClient.users.getUserOauthAccessToken(clerkUserId, 'google');
+export async function getGoogleAccessToken(
+  clerkUserId: string,
+): Promise<string> {
+  const tokens = await clerkClient.users.getUserOauthAccessToken(
+    clerkUserId,
+    'google',
+  );
   const accessToken = tokens.data[0]?.token;
   if (!accessToken) {
-    throw new Error('Google OAuth token not found. Please sign in again.');
+    throw new Error(
+      'Google OAuth token not found. Please sign in again.',
+    );
   }
   return accessToken;
 }
@@ -101,10 +111,20 @@ export async function createSpreadsheetForUser(
   // Add header row
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `${currentMonth}!A1:G1`,
+    range: `'${currentMonth}'!A1:G1`,
     valueInputOption: 'RAW',
     requestBody: {
-      values: [['Timestamp', 'Item', 'Category', 'Amount', 'Payment Method', 'Date', 'Source']],
+      values: [
+        [
+          'Timestamp',
+          'Item',
+          'Category',
+          'Amount',
+          'Payment Method',
+          'Date',
+          'Source',
+        ],
+      ],
     },
   });
 
@@ -125,27 +145,27 @@ export async function verifySpreadsheetAccess(
   const drive = google.drive({ version: 'v3', auth });
   const file = await drive.files.get({
     fileId: spreadsheetId,
-    fields: 'id, capabilities(canEdit)'
+    fields: 'id, capabilities(canEdit)',
   });
 
   const canEdit = file.data.capabilities?.canEdit;
   if (!canEdit) {
     throw new Error(
       'The connected Google account does not have edit access to this spreadsheet. ' +
-      'Please ensure you have editor permissions and try again.'
+        'Please ensure you have editor permissions and try again.',
     );
   }
 }
 
 export async function getExpensesByMonth(
   month: string,
-  limit?: number
+  limit?: number,
 ): Promise<string[][]> {
   try {
     const sheets = getSheetsClient();
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
-      range: `'${month}'!A:G`
+      range: `'${month}'!A:G`,
     });
     const values = res.data.values ?? [];
     const rows = values.slice(1);
