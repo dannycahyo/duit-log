@@ -12,12 +12,31 @@ import {
 import type { Route } from './+types/root';
 import './app.css';
 import { Toaster } from '~/components/ui/sonner';
-import { clerkMiddleware, rootAuthLoader } from '@clerk/react-router/server';
+import {
+  clerkMiddleware,
+  rootAuthLoader,
+} from '@clerk/react-router/server';
 import { ClerkProvider } from '@clerk/react-router';
 
-export const middleware: Route.MiddlewareFunction[] = [clerkMiddleware()];
+export const links: Route.LinksFunction = () => [
+  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+  {
+    rel: 'preconnect',
+    href: 'https://fonts.gstatic.com',
+    crossOrigin: 'anonymous',
+  },
+  {
+    rel: 'stylesheet',
+    href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap',
+  },
+];
 
-export const loader = (args: Route.LoaderArgs) => rootAuthLoader(args);
+export const middleware: Route.MiddlewareFunction[] = [
+  clerkMiddleware(),
+];
+
+export const loader = (args: Route.LoaderArgs) =>
+  rootAuthLoader(args);
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [swUpdate, setSwUpdate] = useState(false);
