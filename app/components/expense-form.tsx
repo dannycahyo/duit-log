@@ -11,19 +11,6 @@ import {
 } from '~/components/ui/popover';
 import { cn } from '~/lib/utils';
 
-const COLOR_MAP: Record<string, string> = {
-  'blue-500': 'bg-blue-500',
-  'rose-500': 'bg-rose-500',
-  'indigo-500': 'bg-indigo-500',
-  'green-500': 'bg-green-500',
-  'amber-500': 'bg-amber-500',
-  'purple-500': 'bg-purple-500',
-  'red-500': 'bg-red-500',
-  'pink-500': 'bg-pink-500',
-  'teal-500': 'bg-teal-500',
-  'gray-500': 'bg-gray-500',
-};
-
 const CHECKED_COLOR_MAP: Record<string, string> = {
   'blue-500': 'peer-checked:bg-blue-500',
   'rose-500': 'peer-checked:bg-rose-500',
