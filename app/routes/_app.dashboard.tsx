@@ -110,7 +110,9 @@ export async function action(args: Route.ActionArgs) {
   if (!clerkUserId) throw redirect('/');
 
   const user = await getOrCreateUser(clerkUserId, '');
-  if (!user) throw redirect('/');
+  if (!user || !('email' in user) || !user.email) {
+    return data({ success: false as const, error: 'User account is not fully initialized. Please reload the page and try again.' });
+  }
   const config = await getUserConfig(user.id);
 
   if (!config.spreadsheet) {

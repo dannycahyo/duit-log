@@ -6,7 +6,7 @@ export function createExpenseSchema(config: {
   methods: string[];
 }) {
   return z.object({
-    month: z.string().regex(/^\d{4}-\d{2}$/, 'Invalid month'),
+    month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Invalid month'),
     item: z.string().min(1, 'Item is required').max(100, 'Item too long'),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date'),
     amount: z
