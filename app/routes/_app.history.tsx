@@ -12,7 +12,7 @@ import { getAuth } from '@clerk/react-router/server';
 import { redirect } from 'react-router';
 import { resolveActiveMonth } from '~/lib/month.server';
 import { selectedMonthCookie } from '~/lib/cookies.server';
-import { getOrCreateUser, getUserConfig } from '~/lib/user.server';
+import { getUserByClerkId, getUserConfig } from '~/lib/user.server';
 import type { ExpenseEntry } from '~/lib/types';
 import { ExpenseCard } from '~/components/expense-card';
 import { MonthSelector } from '~/components/month-selector';
@@ -24,7 +24,7 @@ export async function loader(args: Route.LoaderArgs) {
   const { userId: clerkUserId } = await getAuth(args);
   if (!clerkUserId) throw redirect('/');
 
-  const user = await getOrCreateUser(clerkUserId, '');
+  const user = await getUserByClerkId(clerkUserId);
   if (!user) throw redirect('/');
   const config = await getUserConfig(user.id);
 

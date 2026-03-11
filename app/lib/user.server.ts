@@ -9,6 +9,20 @@ import {
 import { eq } from "drizzle-orm";
 
 /**
+ * Look up an existing user by Clerk ID. Returns null if not found.
+ * Use this in nested loaders/actions where the _app layout loader
+ * has already provisioned the user — avoids racing getOrCreateUser
+ * with missing profile data.
+ */
+export async function getUserByClerkId(clerkId: string) {
+  return (
+    (await db.query.users.findFirst({
+      where: eq(users.clerkId, clerkId),
+    })) ?? null
+  );
+}
+
+/**
  * Get or create a user record from a Clerk user ID.
  * Called on every authenticated request (via the _app layout loader).
  */

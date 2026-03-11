@@ -14,7 +14,7 @@ import {
   getGoogleAccessToken,
 } from '~/lib/sheets.server';
 import { createExpenseSchema } from '~/lib/validation';
-import { getOrCreateUser, getUserConfig } from '~/lib/user.server';
+import { getUserByClerkId, getUserConfig } from '~/lib/user.server';
 import { ExpenseForm } from '~/components/expense-form';
 import { MonthSelector } from '~/components/month-selector';
 import { log } from '~/lib/logger.server';
@@ -74,7 +74,7 @@ export async function loader(args: Route.LoaderArgs) {
   const { userId: clerkUserId } = await getAuth(args);
   if (!clerkUserId) throw redirect('/');
 
-  const user = await getOrCreateUser(clerkUserId, '');
+  const user = await getUserByClerkId(clerkUserId);
   if (!user) throw redirect('/');
   const config = await getUserConfig(user.id);
 
@@ -109,8 +109,8 @@ export async function action(args: Route.ActionArgs) {
   const { userId: clerkUserId } = await getAuth(args);
   if (!clerkUserId) throw redirect('/');
 
-  const user = await getOrCreateUser(clerkUserId, '');
-  if (!user || !('email' in user) || !user.email) {
+  const user = await getUserByClerkId(clerkUserId);
+  if (!user) {
     return data({ success: false as const, error: 'User account is not fully initialized. Please reload the page and try again.' });
   }
   const config = await getUserConfig(user.id);

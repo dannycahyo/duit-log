@@ -4,7 +4,7 @@ import { getAuth } from "@clerk/react-router/server";
 import { createExpenseSchema } from "~/lib/validation";
 import { appendExpense, getGoogleAccessToken } from "~/lib/sheets.server";
 import { log } from "~/lib/logger.server";
-import { getOrCreateUser, getUserConfig } from "~/lib/user.server";
+import { getUserByClerkId, getUserConfig } from "~/lib/user.server";
 
 export async function action(args: Route.ActionArgs) {
   const { userId: clerkUserId } = await getAuth(args);
@@ -12,9 +12,9 @@ export async function action(args: Route.ActionArgs) {
     return data({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await getOrCreateUser(clerkUserId, '');
+  const user = await getUserByClerkId(clerkUserId);
   if (!user) {
-    return data({ success: false, error: "User not found" }, { status: 401 });
+    return data({ success: false, error: "User not provisioned yet" }, { status: 409 });
   }
   const config = await getUserConfig(user.id);
   if (!config.spreadsheet) {
