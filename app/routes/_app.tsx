@@ -1,6 +1,6 @@
 import { getAuth } from '@clerk/react-router/server';
 import { redirect, Outlet, NavLink } from 'react-router';
-import { UserButton } from '@clerk/react-router';
+
 import type { Route } from './+types/_app';
 
 export async function loader(args: Route.LoaderArgs) {

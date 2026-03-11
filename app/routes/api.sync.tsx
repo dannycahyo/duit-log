@@ -7,7 +7,9 @@ import { log } from "~/lib/logger.server";
 
 export async function action(args: Route.ActionArgs) {
   const { userId } = await getAuth(args);
-  if (!userId) throw redirect("/");
+  if (!userId) {
+    return data({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
 
   const body = await args.request.json();
   const result = expenseSchema.safeParse(body);
