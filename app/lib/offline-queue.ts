@@ -3,7 +3,6 @@ export interface PendingExpense {
   createdAt: string;
   formData: {
     month: string;
-    item: string;
     date: string;
     amount: string;
     category: string;

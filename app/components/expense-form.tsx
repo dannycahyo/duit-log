@@ -3,7 +3,6 @@ import { toast } from 'sonner';
 import { Form } from 'react-router';
 import { endOfMonth, format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
-import { CATEGORIES, METHODS, SOURCES } from '~/lib/constants';
 import { Calendar } from '~/components/ui/calendar';
 import {
   Popover,
@@ -12,7 +11,36 @@ import {
 } from '~/components/ui/popover';
 import { cn } from '~/lib/utils';
 
+const COLOR_MAP: Record<string, string> = {
+  'blue-500': 'bg-blue-500',
+  'rose-500': 'bg-rose-500',
+  'indigo-500': 'bg-indigo-500',
+  'green-500': 'bg-green-500',
+  'amber-500': 'bg-amber-500',
+  'purple-500': 'bg-purple-500',
+  'red-500': 'bg-red-500',
+  'pink-500': 'bg-pink-500',
+  'teal-500': 'bg-teal-500',
+  'gray-500': 'bg-gray-500',
+};
+
+const CHECKED_COLOR_MAP: Record<string, string> = {
+  'blue-500': 'peer-checked:bg-blue-500',
+  'rose-500': 'peer-checked:bg-rose-500',
+  'indigo-500': 'peer-checked:bg-indigo-500',
+  'green-500': 'peer-checked:bg-green-500',
+  'amber-500': 'peer-checked:bg-amber-500',
+  'purple-500': 'peer-checked:bg-purple-500',
+  'red-500': 'peer-checked:bg-red-500',
+  'pink-500': 'peer-checked:bg-pink-500',
+  'teal-500': 'peer-checked:bg-teal-500',
+  'gray-500': 'peer-checked:bg-gray-500',
+};
+
 interface ExpenseFormProps {
+  sources: Array<{ label: string; color: string }>;
+  categories: Array<{ label: string; color: string }>;
+  methods: Array<{ label: string }>;
   errors?: Record<string, string>;
   isSubmitting?: boolean;
   amountRef?: RefObject<HTMLInputElement | null>;
@@ -57,6 +85,9 @@ function reducer(state: State, action: Action): State {
 }
 
 export function ExpenseForm({
+  sources,
+  categories,
+  methods,
   errors,
   isSubmitting,
   amountRef,
@@ -87,7 +118,6 @@ export function ExpenseForm({
     const category = formData.get('category') as string;
     const method = formData.get('method') as string;
     const source = formData.get('source') as string;
-    const item = formData.get('item') as string;
     const date = formData.get('date') as string;
 
     if (
@@ -95,7 +125,6 @@ export function ExpenseForm({
       !category ||
       !method ||
       !source ||
-      !item ||
       !date
     ) {
       toast.error('Please fill in all required fields.');
@@ -152,39 +181,26 @@ export function ExpenseForm({
         )}
       </fieldset>
 
-      {/* Item */}
-      <fieldset>
-        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-          Item
-        </label>
-        <input
-          type="text"
-          name="item"
-          placeholder="What did you buy?"
-          maxLength={100}
-          className="w-full rounded-lg border-2 border-slate-200 px-4 py-3 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-slate-900"
-        />
-        {errors?.item && (
-          <p className="mt-1 text-xs text-red-500">{errors.item}</p>
-        )}
-      </fieldset>
-
       {/* Category */}
       <fieldset>
         <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
           Category
         </label>
         <div className="grid grid-cols-3 gap-2">
-          {CATEGORIES.map((c) => (
-            <label key={c} className="cursor-pointer">
+          {categories.map((c) => (
+            <label key={c.label} className="cursor-pointer">
               <input
                 type="radio"
                 name="category"
-                value={c}
+                value={c.label}
                 className="peer sr-only"
               />
-              <div className="rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-600 transition-colors peer-checked:bg-slate-900 peer-checked:text-white">
-                {c}
+              <div className={cn(
+                'rounded-lg py-2 text-center text-xs font-medium transition-colors',
+                'bg-slate-100 text-slate-600 peer-checked:text-white',
+                CHECKED_COLOR_MAP[c.color] ?? 'peer-checked:bg-slate-900',
+              )}>
+                {c.label}
               </div>
             </label>
           ))}
@@ -202,16 +218,16 @@ export function ExpenseForm({
           Payment Method
         </label>
         <div className="grid grid-cols-3 gap-2">
-          {METHODS.map((m) => (
-            <label key={m} className="cursor-pointer">
+          {methods.map((m) => (
+            <label key={m.label} className="cursor-pointer">
               <input
                 type="radio"
                 name="method"
-                value={m}
+                value={m.label}
                 className="peer sr-only"
               />
               <div className="rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-600 transition-colors peer-checked:bg-slate-900 peer-checked:text-white">
-                {m}
+                {m.label}
               </div>
             </label>
           ))}
@@ -275,17 +291,21 @@ export function ExpenseForm({
           Paid from
         </label>
         <div className="grid grid-cols-3 gap-2">
-          {SOURCES.map((s) => (
-            <label key={s} className="cursor-pointer">
+          {sources.map((s) => (
+            <label key={s.label} className="cursor-pointer">
               <input
                 type="radio"
                 name="source"
-                value={s}
-                defaultChecked={s === (defaultSource ?? 'Danny')}
+                value={s.label}
+                defaultChecked={s.label === defaultSource}
                 className="peer sr-only"
               />
-              <div className="rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-600 transition-colors peer-checked:bg-slate-900 peer-checked:text-white">
-                {s}
+              <div className={cn(
+                'rounded-lg py-2 text-center text-xs font-medium transition-colors',
+                'bg-slate-100 text-slate-600 peer-checked:text-white',
+                CHECKED_COLOR_MAP[s.color] ?? 'peer-checked:bg-slate-900',
+              )}>
+                {s.label}
               </div>
             </label>
           ))}

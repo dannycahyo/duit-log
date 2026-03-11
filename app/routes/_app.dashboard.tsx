@@ -11,8 +11,10 @@ import type { Route } from './+types/_app.dashboard';
 import {
   appendExpense,
   getAvailableMonths,
+  getGoogleAccessToken,
 } from '~/lib/sheets.server';
-import { expenseSchema } from '~/lib/validation';
+import { createExpenseSchema } from '~/lib/validation';
+import { getOrCreateUser, getUserConfig } from '~/lib/user.server';
 import { ExpenseForm } from '~/components/expense-form';
 import { MonthSelector } from '~/components/month-selector';
 import { log } from '~/lib/logger.server';
@@ -43,7 +45,6 @@ type ActionData =
   | {
       success: true;
       entry: {
-        item: string;
         category: string;
         amount: number;
         method: string;
@@ -59,7 +60,6 @@ type ActionData =
       networkError: true;
       pendingData: {
         month: string;
-        item: string;
         date: string;
         amount: number;
         category: string;
@@ -69,91 +69,100 @@ type ActionData =
     };
 
 export async function loader(args: Route.LoaderArgs) {
-  const { userId } = await getAuth(args);
-  if (!userId) throw redirect('/');
+  const { userId: clerkUserId } = await getAuth(args);
+  if (!clerkUserId) throw redirect('/');
 
+  const user = await getOrCreateUser(clerkUserId, '');
+  if (!user) throw redirect('/');
+  const config = await getUserConfig(user.id);
+
+  if (!config.spreadsheet) {
+    throw redirect('/onboarding');
+  }
+
+  const accessToken = await getGoogleAccessToken(clerkUserId);
   const cookieHeader = args.request.headers.get('Cookie');
-  const cookieMonth = await selectedMonthCookie.parse(cookieHeader);
-  const cookieSource = await selectedSourceCookie.parse(cookieHeader);
+  const [cookieMonth, cookieSource] = await Promise.all([
+    selectedMonthCookie.parse(cookieHeader),
+    selectedSourceCookie.parse(cookieHeader),
+  ]);
 
-  const { months, activeMonth } = await resolveActiveMonth(cookieMonth);
+  const { months, activeMonth } = await resolveActiveMonth(
+    accessToken,
+    config.spreadsheet.spreadsheetId,
+    cookieMonth,
+  );
 
   return data({
     months,
     activeMonth,
-    defaultSource: cookieSource ?? 'Danny',
+    sources: config.sources.map((s) => ({ label: s.label, color: s.color })),
+    categories: config.categories.map((c) => ({ label: c.label, color: c.color })),
+    methods: config.methods.map((m) => ({ label: m.label })),
+    defaultSource: cookieSource ?? config.sources[0]?.label ?? '',
   });
 }
 
 export async function action(args: Route.ActionArgs) {
-  const { userId } = await getAuth(args);
-  if (!userId) throw redirect('/');
+  const { userId: clerkUserId } = await getAuth(args);
+  if (!clerkUserId) throw redirect('/');
+
+  const user = await getOrCreateUser(clerkUserId, '');
+  if (!user) throw redirect('/');
+  const config = await getUserConfig(user.id);
+
+  if (!config.spreadsheet) {
+    return data({ success: false as const, error: 'No spreadsheet configured.' });
+  }
 
   const request = args.request;
   const formData = await request.formData();
-  const raw = {
-    month: formData.get('month') as string,
-    item: formData.get('item') as string,
-    date: formData.get('date') as string,
-    amount: formData.get('amount') as string,
-    category: formData.get('category') as string,
-    method: formData.get('method') as string,
-    source: formData.get('source') as string,
-  };
 
-  const result = expenseSchema.safeParse(raw);
+  const schema = createExpenseSchema({
+    sources: config.sources.map((s) => s.label),
+    categories: config.categories.map((c) => c.label),
+    methods: config.methods.map((m) => m.label),
+  });
+
+  const result = schema.safeParse(Object.fromEntries(formData));
 
   if (!result.success) {
-    const fieldErrors: Record<string, string> = {};
+    const errors: Record<string, string> = {};
     for (const issue of result.error.issues) {
       const key = issue.path[0] as string;
-      if (!fieldErrors[key]) {
-        fieldErrors[key] = issue.message;
-      }
+      if (!errors[key]) errors[key] = issue.message;
     }
-    return data({ success: false as const, errors: fieldErrors });
+    return data({ success: false as const, errors });
   }
 
   const parsed = result.data;
+  const accessToken = await getGoogleAccessToken(clerkUserId);
 
-  // Verify the target month tab exists (skip when offline — appendExpense will fail gracefully)
+  // Verify the target month tab exists
   try {
-    const availableMonths = await getAvailableMonths();
-    if (!availableMonths.includes(parsed.month)) {
+    const months = await getAvailableMonths(accessToken, config.spreadsheet.spreadsheetId);
+    if (!months.includes(parsed.month)) {
       return data({
         success: false as const,
-        error:
-          "Sheet tab '" +
-          parsed.month +
-          "' not found. Please create it in the spreadsheet.",
+        error: `Sheet tab '${parsed.month}' not found.`,
       });
     }
   } catch (err) {
     if (!isNetworkError(err)) throw err;
-    // Offline — skip verification and let appendExpense attempt (and fail) below
   }
 
-  const now = new Date();
-  const jakartaDate = new Date(
-    now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }),
-  );
-  const timestamp = `${jakartaDate.getMonth() + 1}/${jakartaDate.getDate()}/${jakartaDate.getFullYear()} ${String(jakartaDate.getHours()).padStart(2, '0')}:${String(jakartaDate.getMinutes()).padStart(2, '0')}:${String(jakartaDate.getSeconds()).padStart(2, '0')}`;
-
-  const [year, month, day] = parsed.date.split('-');
-  const formattedDate = `${Number(month)}/${Number(day)}/${year}`;
-
   const row = [
-    timestamp, // Timestamp
-    parsed.item, // Item
-    parsed.category, // Category
-    String(parsed.amount), // Amount (IDR)
-    parsed.method, // Payment Method
-    formattedDate, // Date
-    parsed.source, // Source
+    new Date().toISOString(),
+    parsed.source,
+    parsed.category,
+    String(parsed.amount),
+    parsed.method,
+    parsed.date,
   ];
 
   try {
-    await appendExpense(parsed.month, row);
+    await appendExpense(accessToken, config.spreadsheet.spreadsheetId, parsed.month, row);
+
     const headers = new Headers();
     headers.append(
       'Set-Cookie',
@@ -163,18 +172,11 @@ export async function action(args: Route.ActionArgs) {
       'Set-Cookie',
       await selectedSourceCookie.serialize(parsed.source),
     );
+
     return data(
       {
         success: true as const,
-        entry: {
-          item: parsed.item,
-          category: parsed.category,
-          amount: parsed.amount,
-          method: parsed.method,
-          date: parsed.date,
-          source: parsed.source,
-          month: parsed.month,
-        },
+        entry: { ...parsed },
       },
       { headers },
     );
@@ -185,7 +187,6 @@ export async function action(args: Route.ActionArgs) {
         networkError: true as const,
         pendingData: {
           month: parsed.month,
-          item: parsed.item,
           date: parsed.date,
           amount: parsed.amount,
           category: parsed.category,
@@ -208,7 +209,7 @@ export async function action(args: Route.ActionArgs) {
 }
 
 export default function Dashboard() {
-  const { months, activeMonth, defaultSource } =
+  const { months, activeMonth, sources, categories, methods, defaultSource } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as
     | ActionData
@@ -306,7 +307,7 @@ export default function Dashboard() {
     if (actionData.success) {
       const monthLabel = formatMonthLabel(actionData.entry.month);
       toast.success(
-        `Saved to ${monthLabel}: ${actionData.entry.item} — IDR ${actionData.entry.amount.toLocaleString()}`,
+        `Saved to ${monthLabel}: ${actionData.entry.category} — IDR ${actionData.entry.amount.toLocaleString()}`,
       );
       if (
         typeof navigator !== 'undefined' &&
@@ -352,7 +353,6 @@ export default function Dashboard() {
       createdAt: new Date().toISOString(),
       formData: {
         month: formData.get('month') as string,
-        item: formData.get('item') as string,
         date: formData.get('date') as string,
         amount: formData.get('amount') as string,
         category: formData.get('category') as string,
@@ -433,6 +433,9 @@ export default function Dashboard() {
 
       <ExpenseForm
         key={formKey}
+        sources={sources}
+        categories={categories}
+        methods={methods}
         errors={errors}
         isSubmitting={isSubmitting}
         amountRef={amountRef}

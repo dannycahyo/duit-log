@@ -7,11 +7,12 @@ import {
   isRouteErrorResponse,
 } from 'react-router';
 import type { Route } from './+types/_app.history';
-import { getExpensesByMonth } from '~/lib/sheets.server';
+import { getExpensesByMonth, getGoogleAccessToken } from '~/lib/sheets.server';
 import { getAuth } from '@clerk/react-router/server';
 import { redirect } from 'react-router';
 import { resolveActiveMonth } from '~/lib/month.server';
 import { selectedMonthCookie } from '~/lib/cookies.server';
+import { getOrCreateUser, getUserConfig } from '~/lib/user.server';
 import type { ExpenseEntry } from '~/lib/types';
 import { ExpenseCard } from '~/components/expense-card';
 import { MonthSelector } from '~/components/month-selector';
@@ -20,8 +21,18 @@ import { syncPendingExpenses } from '~/lib/sync';
 import { toast } from 'sonner';
 
 export async function loader(args: Route.LoaderArgs) {
-  const { userId } = await getAuth(args);
-  if (!userId) throw redirect('/');
+  const { userId: clerkUserId } = await getAuth(args);
+  if (!clerkUserId) throw redirect('/');
+
+  const user = await getOrCreateUser(clerkUserId, '');
+  if (!user) throw redirect('/');
+  const config = await getUserConfig(user.id);
+
+  if (!config.spreadsheet) {
+    throw redirect('/onboarding');
+  }
+
+  const accessToken = await getGoogleAccessToken(clerkUserId);
 
   const url = new URL(args.request.url);
   const monthParam = url.searchParams.get('month');
@@ -30,6 +41,8 @@ export async function loader(args: Route.LoaderArgs) {
   );
 
   const { months, activeMonth, offline } = await resolveActiveMonth(
+    accessToken,
+    config.spreadsheet.spreadsheetId,
     monthParam ?? cookieMonth,
   );
 
@@ -38,28 +51,40 @@ export async function loader(args: Route.LoaderArgs) {
       entries: [] as ExpenseEntry[],
       activeMonth,
       months,
+      sources: config.sources.map((s) => ({ label: s.label, color: s.color })),
       offline: true,
     });
   }
 
   try {
     const LIMIT = 20;
-    const rows = await getExpensesByMonth(activeMonth, LIMIT);
+    const rows = await getExpensesByMonth(
+      accessToken,
+      config.spreadsheet.spreadsheetId,
+      activeMonth,
+      LIMIT,
+    );
+    // Column order: Timestamp, Source, Category, Amount, Method, Date
     const entries: ExpenseEntry[] = rows.map((row) => ({
       timestamp: row[0] ?? '',
-      item: row[1] ?? '',
+      source: row[1] ?? '',
       category: row[2] ?? '',
       amount: Number(row[3]) || 0,
       method: row[4] ?? '',
       date: row[5] ?? '',
-      source: row[6] ?? '',
     }));
-    return data({ entries, activeMonth, months });
+    return data({
+      entries,
+      activeMonth,
+      months,
+      sources: config.sources.map((s) => ({ label: s.label, color: s.color })),
+    });
   } catch {
     return data({
       entries: [] as ExpenseEntry[],
       activeMonth,
       months,
+      sources: config.sources.map((s) => ({ label: s.label, color: s.color })),
       error: 'Failed to load expenses',
     });
   }
@@ -74,6 +99,7 @@ export default function History() {
   const entries = loaderData.entries as ExpenseEntry[];
   const activeMonth = loaderData.activeMonth as string;
   const months = loaderData.months as string[];
+  const sources = (loaderData as Record<string, unknown>).sources as Array<{ label: string; color: string }> ?? [];
   const navigate = useNavigate();
 
   type State = {
@@ -228,12 +254,12 @@ export default function History() {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-1 px-4 pb-2">
-        {['All', 'Danny', 'Dewi', 'Together'].map((s) => (
+      <div className="flex gap-1 px-4 pb-2 overflow-x-auto">
+        {['All', ...sources.map((s: { label: string }) => s.label)].map((s) => (
           <button
             key={s}
             onClick={() => dispatch({ type: 'SET_SOURCE_FILTER', filter: s })}
-            className={`rounded-lg py-1.5 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               sourceFilter === s
                 ? 'bg-slate-900 text-white'
                 : 'bg-slate-100 text-slate-600'

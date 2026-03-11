@@ -2,75 +2,6 @@ import { google } from 'googleapis';
 import { clerkClient } from '~/lib/clerk.server';
 import { log } from './logger.server';
 
-// Singleton — reuse across requests in the same server instance
-let _sheets: ReturnType<typeof google.sheets> | null = null;
-
-function getSheetsClient() {
-  if (_sheets) return _sheets;
-
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      // The private key is stored with literal \n in the env var; replace with real newlines
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(
-        /\\n/g,
-        '\n',
-      ),
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-
-  _sheets = google.sheets({ version: 'v4', auth });
-  return _sheets;
-}
-
-export async function getAvailableMonths(): Promise<string[]> {
-  try {
-    const sheets = getSheetsClient();
-    const res = await sheets.spreadsheets.get({
-      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
-      fields: 'sheets.properties.title',
-    });
-
-    const titles = (res.data.sheets ?? [])
-      .map((s) => s.properties?.title ?? '')
-      .filter((title) => /^\d{4}-\d{2}$/.test(title));
-
-    titles.sort();
-    titles.reverse();
-
-    log('info', 'sheets_get_months_success', {
-      count: titles.length,
-    });
-    return titles;
-  } catch (err) {
-    const error = err as Error;
-    log('error', 'sheets_get_months_error', { error: error.message });
-    throw err;
-  }
-}
-
-export async function appendExpense(
-  month: string,
-  row: string[],
-): Promise<void> {
-  try {
-    const sheets = getSheetsClient();
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
-      range: `'${month}'!A:G`,
-      valueInputOption: 'USER_ENTERED',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values: [row] },
-    });
-    log('info', 'sheets_append_success', { month });
-  } catch (err) {
-    const error = err as Error;
-    log('error', 'sheets_append_error', { error: error.message });
-    throw err;
-  }
-}
-
 export async function getGoogleAccessToken(
   clerkUserId: string,
 ): Promise<string> {
@@ -85,6 +16,45 @@ export async function getGoogleAccessToken(
     );
   }
   return accessToken;
+}
+
+function createSheetsClient(accessToken: string) {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+  return google.sheets({ version: 'v4', auth });
+}
+
+export async function getAvailableMonths(
+  accessToken: string,
+  spreadsheetId: string,
+): Promise<string[]> {
+  const sheets = createSheetsClient(accessToken);
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties.title',
+  });
+  return (meta.data.sheets ?? [])
+    .map((s) => s.properties?.title ?? '')
+    .filter((name) => /^\d{4}-\d{2}$/.test(name))
+    .sort()
+    .reverse();
+}
+
+export async function appendExpense(
+  accessToken: string,
+  spreadsheetId: string,
+  month: string,
+  row: string[],
+): Promise<void> {
+  const sheets = createSheetsClient(accessToken);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `'${month}'!A:F`,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [row] },
+  });
+  log('info', 'sheets_append_success', { month });
 }
 
 export async function createSpreadsheetForUser(
@@ -122,18 +92,17 @@ export async function createSpreadsheetForUser(
   // Add header row
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${currentMonth}'!A1:G1`,
+    range: `'${currentMonth}'!A1:F1`,
     valueInputOption: 'RAW',
     requestBody: {
       values: [
         [
           'Timestamp',
-          'Item',
+          'Source',
           'Category',
           'Amount',
-          'Payment Method',
+          'Method',
           'Date',
-          'Source',
         ],
       ],
     },
@@ -169,22 +138,18 @@ export async function verifySpreadsheetAccess(
 }
 
 export async function getExpensesByMonth(
+  accessToken: string,
+  spreadsheetId: string,
   month: string,
   limit?: number,
 ): Promise<string[][]> {
-  try {
-    const sheets = getSheetsClient();
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
-      range: `'${month}'!A:G`,
-    });
-    const values = res.data.values ?? [];
-    const rows = values.slice(1);
-    const bounded = limit ? rows.slice(-limit) : rows;
-    return bounded.reverse() as string[][];
-  } catch (err) {
-    const error = err as Error;
-    log('error', 'sheets_get_error', { error: error.message });
-    throw err;
-  }
+  const sheets = createSheetsClient(accessToken);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${month}'!A:F`,
+  });
+  const rows = res.data.values ?? [];
+  const data = rows.slice(1);
+  const bounded = limit ? data.slice(-limit) : data;
+  return bounded.reverse();
 }

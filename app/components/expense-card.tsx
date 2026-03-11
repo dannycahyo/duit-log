@@ -12,13 +12,6 @@ const categoryColors: Record<string, string> = {
   Other: 'bg-slate-100 text-slate-800',
 };
 
-function sourceColor(source: string): string {
-  if (source === 'Danny') return 'bg-blue-500 text-white';
-  if (source === 'Dewi') return 'bg-rose-500 text-white';
-  if (source === 'Together') return 'bg-indigo-500 text-white';
-  return 'bg-slate-200 text-slate-700';
-}
-
 function formatAmount(amount: number): string {
   return `IDR ${new Intl.NumberFormat('id-ID').format(amount)}`;
 }
@@ -75,9 +68,6 @@ export function ExpenseCard({ entry }: { entry: ExpenseEntry }) {
         <span className="text-lg font-semibold text-slate-900">
           {formatAmount(entry.amount)}
         </span>
-        <span className="truncate text-sm font-medium text-slate-700">
-          {entry.item}
-        </span>
         <div className="flex items-center gap-2">
           <span
             className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${colorClass}`}
@@ -86,9 +76,7 @@ export function ExpenseCard({ entry }: { entry: ExpenseEntry }) {
           </span>
           <span className="text-[11px] text-slate-400">{entry.method}</span>
           {entry.source && (
-            <span
-              className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${sourceColor(entry.source)}`}
-            >
+            <span className="inline-block rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-700">
               {entry.source}
             </span>
           )}

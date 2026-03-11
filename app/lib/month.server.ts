@@ -43,11 +43,13 @@ function buildFallbackMonths(cookieMonth?: string): string[] {
 }
 
 export async function resolveActiveMonth(
-  cookieMonth?: string
+  accessToken: string,
+  spreadsheetId: string,
+  cookieMonth?: string,
 ): Promise<{ months: string[]; activeMonth: string; offline?: boolean }> {
   let months: string[];
   try {
-    months = await getAvailableMonths();
+    months = await getAvailableMonths(accessToken, spreadsheetId);
   } catch (err) {
     if (!isNetworkError(err)) throw err;
     const fallback = buildFallbackMonths(cookieMonth);
