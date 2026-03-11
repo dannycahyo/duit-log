@@ -34,7 +34,16 @@ export async function action(args: Route.ActionArgs) {
   }
 
   const parsed = result.data;
-  const accessToken = await getGoogleAccessToken(clerkUserId);
+  let accessToken: string;
+  try {
+    accessToken = await getGoogleAccessToken(clerkUserId);
+  } catch (err) {
+    log("warn", "google_auth_failed", { error: (err as Error).message });
+    return data(
+      { success: false, error: "Google authorization required" },
+      { status: 401 }
+    );
+  }
 
   // Use original submission time (createdAt) if available, otherwise use current time
   const createdAt = body.createdAt ? new Date(body.createdAt) : new Date();

@@ -29,15 +29,28 @@ export async function getAvailableMonths(
   spreadsheetId: string,
 ): Promise<string[]> {
   const sheets = createSheetsClient(accessToken);
-  const meta = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: 'sheets.properties.title',
-  });
-  return (meta.data.sheets ?? [])
-    .map((s) => s.properties?.title ?? '')
-    .filter((name) => /^\d{4}-\d{2}$/.test(name))
-    .sort()
-    .reverse();
+  try {
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'sheets.properties.title',
+    });
+    const months = (meta.data.sheets ?? [])
+      .map((s) => s.properties?.title ?? '')
+      .filter((name) => /^\d{4}-\d{2}$/.test(name))
+      .sort()
+      .reverse();
+    log('info', 'sheets_get_available_months_success', {
+      spreadsheetId,
+      monthCount: months.length,
+    });
+    return months;
+  } catch (err) {
+    log('error', 'sheets_get_available_months_error', {
+      spreadsheetId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 }
 
 export async function appendExpense(
@@ -47,14 +60,23 @@ export async function appendExpense(
   row: string[],
 ): Promise<void> {
   const sheets = createSheetsClient(accessToken);
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `'${month}'!A:G`,
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [row] },
-  });
-  log('info', 'sheets_append_success', { month });
+  try {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${month}'!A:G`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] },
+    });
+    log('info', 'sheets_append_success', { month });
+  } catch (error) {
+    log('error', 'sheets_append_failure', {
+      spreadsheetId,
+      month,
+      error,
+    });
+    throw error;
+  }
 }
 
 export async function createSpreadsheetForUser(

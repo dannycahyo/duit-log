@@ -100,7 +100,10 @@ export default function History() {
   const entries = loaderData.entries as ExpenseEntry[];
   const activeMonth = loaderData.activeMonth as string;
   const months = loaderData.months as string[];
-  const sources = (loaderData as Record<string, unknown>).sources as Array<{ label: string; color: string }> ?? [];
+  const sources =
+    'sources' in loaderData && Array.isArray(loaderData.sources)
+      ? (loaderData.sources as Array<{ label: string; color: string }>)
+      : [];
   const navigate = useNavigate();
 
   type State = {
