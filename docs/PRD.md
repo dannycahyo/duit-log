@@ -1,106 +1,85 @@
 # PRD — Product Requirement Document
 
-| Version | Date       | Author | Change Description |
-| ------- | ---------- | ------ | ------------------ |
-| 2       | 2026-03-10 | Danny  | SaaS Plan          |
-
 ## Problem Statement
 
-DuitLog started as a personal expense tracker for one couple. The core value proposition — "log expenses in under 10 seconds, keep all analysis power in Google Sheets" — resonates with a broader audience. However, the current implementation is deeply personalized: hardcoded sources (Danny/Dewi/Together), hardcoded categories and payment methods, a single shared spreadsheet ID in an env var, and a simple passcode for auth.
+Logging daily expenses is a high-frequency, low-effort task — yet it carries enough friction (opening a spreadsheet app, navigating to the right cell, formatting correctly) that it gets skipped. Missed entries compound into inaccurate budgets.
 
-To serve multiple users, DuitLog needs real authentication, per-user configuration, and a way for each user to connect their own Google Sheet — all without losing the speed and simplicity that makes it useful.
+We already rely on Google Sheets for analysis (pivot tables, monthly summaries, charts). What we lack is a **zero-friction input surface** optimized for mobile — a PWA that lets us tap, type, and submit an expense in under 10 seconds, while the spreadsheet remains our single source of truth.
 
 ## Goals
 
-1. **Multi-user support** — anyone can sign up, configure their own expense tracker, and use it independently.
-2. **Per-user Google Sheets** — each user connects their own spreadsheet via Google OAuth. The app reads/writes to their sheet on their behalf.
-3. **Customizable fields** — each user defines their own sources, categories, and payment methods during onboarding (and can edit later).
-4. **Zero-config spreadsheet setup** — the app creates the spreadsheet and monthly tabs for the user automatically.
-5. **Preserve the core UX** — the expense form must remain fast, mobile-first, and under 10 seconds from open to saved.
-6. **Retain existing features** — monthly tab organization, offline queue with background sync, PWA installability.
+1. **Sub-10-second expense logging** from phone home screen to confirmed entry.
+2. **Google Sheets as the canonical datastore** — no secondary database, no sync conflicts.
+3. **Mobile-first, one-hand-friendly UX** — big tap targets, smart defaults, minimal scrolling.
+4. **Couple-aware** — two users sharing one financial picture, each identifiable per entry.
 
-## Non-Goals (SaaS v1)
+## Non-Goals
 
-- Billing / paid tiers (free for now, evaluate later).
-- Shared household accounts or multi-user → one-spreadsheet setups (each account connects to and manages its own sheet; any Google Sheets sharing/collaboration happens outside the app and is not recognized as a shared account in v1).
-- Admin dashboard or usage analytics.
-- White-labeling or custom domains.
-- Data export beyond Google Sheets (the sheet IS the export).
+- Building dashboards or analytics inside the PWA (Sheets handles this).
+- Multi-tenant / team support.
+- Full OAuth/JWT auth in MVP.
+- Offline-first with complex conflict resolution (simple queuing is acceptable).
+- Native app stores distribution.
 
 ## User Personas
 
-**New User (Non-technical)** — Heard about DuitLog from a friend. Has a Google account. Wants to start tracking expenses immediately. Has no idea what a "service account" or "spreadsheet ID" is. Needs a smooth onboarding that creates everything for them.
+**Danny** — Tech-savvy, logs expenses immediately after paying. Prefers quick numeric input. Occasionally reviews recent entries to catch duplicates.
 
-**Power User** — Already has a Google Sheet with their own expense tracking format. Wants to connect their existing sheet and customize the app to match their categories. Comfortable with a few setup steps.
-
-**Returning User (Danny)** — Current user migrating from the personal version. Needs to connect his existing spreadsheet and configure the same sources/categories/methods.
+**Wife** — Less technical, uses the app purely as a quick form. Wants large buttons, clear confirmation, and zero learning curve.
 
 ## Key User Journeys
 
-### J1: Sign Up & Onboarding (First-time)
+### J1: Log an Expense (Primary)
 
-1. Land on DuitLog homepage → "Sign in with Google".
-2. Clerk handles Google OAuth, requesting Google Sheets API permissions plus the minimal Google Drive scopes needed to create spreadsheets and let the user pick an existing spreadsheet from Drive (via the Google Picker or equivalent).
-3. On first login, redirected to onboarding wizard:
-   - **Step 1 — Spreadsheet**: Choose "Create a new spreadsheet" (auto-setup) or "Connect an existing spreadsheet" (paste URL or pick from Drive).
-   - **Step 2 — Sources**: Define money sources (e.g., "Me", "Wife", "Joint"). Starts with sensible defaults, user can add/remove/rename.
-   - **Step 3 — Categories**: Define expense categories. Starts with defaults (Food, Transport, etc.), user can customize.
-   - **Step 4 — Payment Methods**: Define payment methods. Starts with defaults, user can customize.
-4. App saves config to database.
-5. If "Create new" was chosen: app creates a Google Spreadsheet in the user's Drive, adds the current month's tab with header row.
-6. Redirected to the main expense form — ready to use.
+1. Tap PWA icon on home screen.
+2. App opens to the Add Expense screen (no navigation needed).
+3. Fields pre-filled: today's date, user = last used identity.
+4. Enter amount (numeric keyboard auto-focused), pick category, pick payment method, optionally add a note.
+5. Tap **Save**.
+6. See a success toast/confirmation with the entry summary.
+7. Form resets for the next entry (stay on screen).
 
-### J2: Log an Expense (Existing User)
+### J2: Quick Review
 
-Same as the personal version:
+1. Navigate to a "Recent" tab/page.
+2. See the last 10–20 entries in reverse chronological order.
+3. Optionally filter by user.
+4. No edit/delete in MVP — corrections happen in the spreadsheet.
 
-1. Open PWA → expense form with month selector.
-2. Sources, categories, and methods are loaded from the user's config in the database.
-3. Submit → server uses the user's Google OAuth token to append to their spreadsheet.
-4. Success toast.
+### J3: Install as PWA
 
-### J3: Manage Settings
-
-1. Navigate to Settings page.
-2. View/edit sources, categories, payment methods (add, remove, rename, reorder).
-3. View connected spreadsheet (link to open in Sheets).
-4. Disconnect and reconnect a different spreadsheet.
-5. Account settings (sign out, delete account).
-
-### J4: Offline Submission (Unchanged)
-
-Same as current implementation — entries queue in IndexedDB, sync when back online via `/api/sync`.
+1. First visit shows an "Add to Home Screen" prompt (or browser-native install banner).
+2. Subsequent launches feel app-like (standalone display, splash screen).
 
 ## Feature List
 
-### SaaS MVP
+### MVP (v1)
 
-| Feature                                                          | Priority |
-| ---------------------------------------------------------------- | -------- |
-| Google OAuth-based authentication (including Sheets API scope)   | P0       |
-| Relational database for user profiles and configuration          | P0       |
-| Onboarding wizard (spreadsheet + sources + categories + methods) | P0       |
-| Per-user Sheets API calls using OAuth token from the auth system | P0       |
-| Auto-create spreadsheet in user's Drive (onboarding option)      | P0       |
-| Customizable sources, categories, payment methods per user       | P0       |
-| Settings page (edit config, view spreadsheet, sign out)          | P1       |
-| Landing page (marketing, sign-in CTA)                            | P1       |
-| Migrate existing personal data (Danny's setup)                   | P1       |
+| Feature                                                       | Priority |
+| ------------------------------------------------------------- | -------- |
+| Add Expense form (date, amount, category, method, user, note) | P0       |
+| Submit → append row to Google Sheets via Service Account      | P0       |
+| Success/error feedback (toast)                                | P0       |
+| PWA installability (manifest + basic service worker)          | P0       |
+| Simple passcode gate (shared secret, cookie-based session)    | P1       |
+| Recent Expenses view (last 20 rows, read-only)                | P1       |
 
-### Future
+### Future Phases
 
-| Feature                                                          | Phase |
-| ---------------------------------------------------------------- | ----- |
-| Shared household accounts (multiple users → one spreadsheet)     | v2    |
-| Billing / usage limits                                           | v2    |
-| Spreadsheet templates (preset configs for different use cases)   | v2    |
-| Import existing expense data from CSV                            | v3    |
-| Dashboard widgets in the app (pulling from Sheets analysis tabs) | v3    |
+| Feature                                          | Phase |
+| ------------------------------------------------ | ----- |
+| Today's spending total (quick glance widget)     | v1.5  |
+| Offline queue with background sync               | v2    |
+| Category/method management from UI               | v2    |
+| Receipt photo attachment (Drive upload)          | v3    |
+| Monthly summary pulled from Sheets analysis tabs | v3    |
+| Per-user auth with Google Sign-In                | v3    |
 
 ## UX Expectations
 
-Everything from the personal version still applies (mobile-first, one-hand, numeric keyboard, smart defaults). Additionally:
-
-- **Onboarding must be completable in under 2 minutes** — most users should tap through defaults without changing anything.
-- **Settings changes take effect immediately** — no "save and restart" flow.
-- **The expense form must not feel slower** despite loading config from a database. Config should be cached or loaded in the route loader efficiently.
+- **Mobile-first**: Designed for 375px–430px viewport widths.
+- **One-hand reachable**: Primary actions in the bottom 60% of the screen.
+- **Numeric keyboard**: The amount field triggers `inputmode="decimal"`.
+- **Smart defaults**: Date = today, User = last used (stored in cookie/localStorage).
+- **Fast feedback**: Optimistic-style UI — disable button + show spinner on submit, toast on result.
+- **Minimal navigation**: Two screens max (Add / Recent). Bottom tab bar or simple header toggle.
