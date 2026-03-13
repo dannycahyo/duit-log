@@ -87,3 +87,72 @@ export async function getExpensesByMonth(
     throw err;
   }
 }
+
+export async function deleteExpenseByTimestamp(
+  month: string,
+  timestamp: string
+): Promise<void> {
+  try {
+    const sheets = getSheetsClient();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+      range: `'${month}'!A:G`
+    });
+    const values = res.data.values ?? [];
+
+    // Find all rows that match the given timestamp in the first column.
+    const matchingRowIndices: number[] = [];
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      if (row && row[0] === timestamp) {
+        matchingRowIndices.push(i);
+      }
+    }
+
+    if (matchingRowIndices.length === 0) {
+      throw new Error('Expense not found');
+    }
+
+    if (matchingRowIndices.length > 1) {
+      throw new Error('Multiple expenses share the same timestamp; deletion is ambiguous');
+    }
+
+    const rowIndex = matchingRowIndices[0];
+    const sheetId = await getSheetIdByName(month);
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1
+            }
+          }
+        }]
+      }
+    });
+    log('info', 'sheets_delete_success', { month, timestamp });
+  } catch (err) {
+    const error = err as Error;
+    log('error', 'sheets_delete_error', { error: error.message });
+    throw err;
+  }
+}
+
+async function getSheetIdByName(name: string): Promise<number> {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+    fields: 'sheets.properties'
+  });
+  const sheet = (res.data.sheets ?? []).find(
+    (s) => s.properties?.title === name
+  );
+  if (!sheet || sheet.properties?.sheetId == null) {
+    throw new Error(`Sheet not found or missing sheetId for name: ${name}`);
+  }
+  return sheet.properties.sheetId;
+}
